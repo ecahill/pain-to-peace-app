@@ -8,6 +8,9 @@ android/.gradle/
 *.log
 .env
 
+# Firebase
+/app/firebase/firebaseConfig.ts
+
 # Expo
 .expo/
 dist/

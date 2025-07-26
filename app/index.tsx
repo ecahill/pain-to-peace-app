@@ -1,26 +1,27 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const WelcomeScreen = ({ navigation }: any) => {
+const WelcomeScreen = () => {
+    const router = useRouter();
+
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Welcome to Pain to Peace™</Text>
+            <Text style={styles.title}>Welcome to Pain to Peace</Text>
             <Text style={styles.subtitle}>Your mind-body companion for pain relief.</Text>
             <TouchableOpacity
                 style={styles.button}
-                onPress={() => navigation.navigate('Signup')}
-            >
+                onPress={() => router.push('/auth')}>
                 <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
                 style={[styles.button, styles.secondaryButton]}
-                onPress={() => navigation.navigate('Login')}
-            >
+                onPress={() => router.push('/login')}>
                 <Text style={styles.secondaryButtonText}>Log In</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('GuestFlow')}>
+            <TouchableOpacity onPress={() => router.push('/auth')}>
                 <Text style={styles.guestText}>Continue as Guest</Text>
             </TouchableOpacity>
         </View>
