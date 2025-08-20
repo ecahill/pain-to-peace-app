@@ -10,50 +10,24 @@ import {
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
 
-interface FavoriteSession {
+interface FavoriteTrack {
   id: string;
   title: string;
   duration: string;
-  category: string;
-  author: string;
+  description: string;
   color: string;
 }
 
-const initialFavorites: FavoriteSession[] = [
-  {
-    id: '1',
-    title: 'Mindful Relief',
-    duration: '15 min',
-    category: 'Pain Relief',
-    author: 'Dr. Anya Sharma',
-    color: '#10B981',
-  },
-  {
-    id: '2',
-    title: 'Evening Calm',
-    duration: '20 min',
-    category: 'Deep Relaxation',
-    author: 'Dr. Sarah Chen',
-    color: '#3B82F6',
-  },
-  {
-    id: '3',
-    title: 'Peaceful Sleep',
-    duration: '25 min',
-    category: 'Sleep',
-    author: 'Dr. Michael Torres',
-    color: '#8B5CF6',
-  },
-];
+const initialFavorites: FavoriteTrack[] = [];
 
 export default function FavoritesScreen() {
-  const [favorites, setFavorites] = useState<FavoriteSession[]>(initialFavorites);
+  const [favorites, setFavorites] = useState<FavoriteTrack[]>(initialFavorites);
 
   const handleRemoveFavorite = (id: string) => {
-    setFavorites(favorites.filter(session => session.id !== id));
+    setFavorites(favorites.filter(track => track.id !== id));
   };
 
-  const handleSessionPress = (session: FavoriteSession) => {
+  const handleTrackPress = (track: FavoriteTrack) => {
     router.push('/player');
   };
 
@@ -68,26 +42,24 @@ export default function FavoritesScreen() {
         {/* Favorites List */}
         {favorites.length > 0 ? (
           <View style={styles.favoritesContainer}>
-            {favorites.map((session) => (
+            {favorites.map((track) => (
               <TouchableOpacity
-                key={session.id}
+                key={track.id}
                 style={styles.favoriteCard}
-                onPress={() => handleSessionPress(session)}
+                onPress={() => handleTrackPress(track)}
               >
                 <View style={styles.favoriteContent}>
-                  <View style={[styles.favoriteIcon, { backgroundColor: session.color }]}>
+                  <View style={[styles.favoriteIcon, { backgroundColor: track.color }]}>
                     <IconSymbol name="play.fill" size={16} color="#FFFFFF" />
                   </View>
                   <View style={styles.favoriteInfo}>
-                    <Text style={styles.favoriteTitle}>{session.title}</Text>
-                    <Text style={styles.favoriteMeta}>
-                      {session.duration} • {session.category}
-                    </Text>
-                    <Text style={styles.favoriteAuthor}>by {session.author}</Text>
+                    <Text style={styles.favoriteTitle}>{track.title}</Text>
+                    <Text style={styles.favoriteMeta}>{track.duration}</Text>
+                    <Text style={styles.favoriteDescription}>{track.description}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.removeButton}
-                    onPress={() => handleRemoveFavorite(session.id)}
+                    onPress={() => handleRemoveFavorite(track.id)}
                   >
                     <Text style={styles.removeButtonText}>×</Text>
                   </TouchableOpacity>
@@ -101,15 +73,15 @@ export default function FavoritesScreen() {
             <View style={styles.emptyIconContainer}>
               <IconSymbol name="heart" size={48} color="#D1D5DB" />
             </View>
-            <Text style={styles.emptyTitle}>No Favorites Yet</Text>
+            <Text style={styles.emptyTitle}>No favorites yet</Text>
             <Text style={styles.emptySubtitle}>
-              Sessions you favorite will appear here for quick access
+              Save tracks you love by tapping the heart icon while listening
             </Text>
             <TouchableOpacity 
               style={styles.browseButton}
               onPress={() => router.push('/library')}
             >
-              <Text style={styles.browseButtonText}>Browse Library</Text>
+              <Text style={styles.browseButtonText}>Explore tracks</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -176,9 +148,10 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginBottom: 2,
   },
-  favoriteAuthor: {
+  favoriteDescription: {
     fontSize: 12,
     color: '#9CA3AF',
+    lineHeight: 16,
   },
   removeButton: {
     width: 32,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,72 +11,53 @@ import {
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
 
-interface CategoryCard {
-  title: string;
-  emoji: string;
-  description: string;
-}
-
-interface Session {
+interface Track {
   id: string;
   title: string;
   duration: string;
-  category: string;
-  author: string;
+  description: string;
 }
 
-const categories: CategoryCard[] = [
-  {
-    title: 'Deep Relaxation',
-    emoji: '🌙',
-    description: 'Find peace and tranquility',
-  },
-  {
-    title: 'Pain Relief',
-    emoji: '💚',
-    description: 'Manage discomfort effectively',
-  },
-  {
-    title: 'Sleep',
-    emoji: '😴',
-    description: 'Drift into a restful night',
-  },
-];
-
-const sessions: Session[] = [
+const tracks: Track[] = [
   {
     id: '1',
     title: 'Mindful Relief',
     duration: '15 min',
-    category: 'Pain Relief',
-    author: 'Dr. Anya Sharma',
+    description: 'Guided meditation to ease chronic pain and tension',
   },
   {
     id: '2',
     title: 'Evening Calm',
     duration: '20 min',
-    category: 'Deep Relaxation',
-    author: 'Dr. Sarah Chen',
+    description: 'Relaxing sounds to unwind after a difficult day',
   },
   {
     id: '3',
     title: 'Peaceful Sleep',
     duration: '25 min',
-    category: 'Sleep',
-    author: 'Dr. Michael Torres',
+    description: 'Gentle hypnosis to help you drift into restful sleep',
   },
   {
     id: '4',
     title: 'Body Scan Relief',
     duration: '18 min',
-    category: 'Pain Relief',
-    author: 'Dr. Anya Sharma',
+    description: 'Progressive relaxation technique for pain management',
   },
 ];
 
 export default function LibraryScreen() {
-  const handleSessionPress = (session: Session) => {
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  const handleTrackPress = (track: Track) => {
     router.push('/player');
+  };
+
+  const toggleFavorite = (trackId: string) => {
+    setFavorites(prev => 
+      prev.includes(trackId) 
+        ? prev.filter(id => id !== trackId)
+        : [...prev, trackId]
+    );
   };
 
   return (
@@ -95,47 +76,41 @@ export default function LibraryScreen() {
           <IconSymbol name="magnifyingglass" size={20} color="#6B7280" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search sessions..."
+            placeholder="Search tracks..."
             placeholderTextColor="#9CA3AF"
           />
         </View>
 
-        {/* Categories Section */}
+        {/* Tracks Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          {categories.map((category, index) => (
-            <TouchableOpacity key={index} style={styles.categoryCard}>
-              <View style={styles.categoryContent}>
-                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryTitle}>{category.title}</Text>
-                  <Text style={styles.categoryDescription}>{category.description}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Sessions Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sessions</Text>
-          {sessions.map((session) => (
+          <Text style={styles.sectionTitle}>Tracks</Text>
+          {tracks.map((track) => (
             <TouchableOpacity
-              key={session.id}
-              style={styles.sessionCard}
-              onPress={() => handleSessionPress(session)}
+              key={track.id}
+              style={styles.trackCard}
+              onPress={() => handleTrackPress(track)}
             >
-              <View style={styles.sessionContent}>
-                <View style={styles.sessionInfo}>
-                  <Text style={styles.sessionTitle}>{session.title}</Text>
-                  <Text style={styles.sessionMeta}>
-                    {session.duration} • {session.category}
-                  </Text>
-                  <Text style={styles.sessionAuthor}>by {session.author}</Text>
+              <View style={styles.trackContent}>
+                <View style={styles.trackInfo}>
+                  <Text style={styles.trackTitle}>{track.title}</Text>
+                  <Text style={styles.trackMeta}>{track.duration}</Text>
+                  <Text style={styles.trackDescription}>{track.description}</Text>
                 </View>
-                <TouchableOpacity style={styles.playButton}>
-                  <IconSymbol name="play.fill" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+                <View style={styles.trackActions}>
+                  <TouchableOpacity 
+                    style={styles.heartButton}
+                    onPress={() => toggleFavorite(track.id)}
+                  >
+                    <IconSymbol 
+                      name={favorites.includes(track.id) ? "heart.fill" : "heart"} 
+                      size={20} 
+                      color={favorites.includes(track.id) ? "#EF4444" : "#9CA3AF"} 
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.playButton}>
+                    <IconSymbol name="play.fill" size={20} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </TouchableOpacity>
           ))}
@@ -198,7 +173,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 16,
   },
-  categoryCard: {
+  trackCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
@@ -209,60 +184,41 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  categoryContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  categoryEmoji: {
-    fontSize: 32,
-    marginRight: 16,
-  },
-  categoryInfo: {
-    flex: 1,
-  },
-  categoryTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  categoryDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  sessionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  sessionContent: {
+  trackContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  sessionInfo: {
+  trackInfo: {
     flex: 1,
   },
-  sessionTitle: {
+  trackTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 4,
   },
-  sessionMeta: {
+  trackMeta: {
     fontSize: 14,
     color: '#6B7280',
-    marginBottom: 2,
+    marginBottom: 4,
   },
-  sessionAuthor: {
-    fontSize: 12,
-    color: '#9CA3AF',
+  trackDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  trackActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  heartButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   playButton: {
     backgroundColor: '#3B82F6',
