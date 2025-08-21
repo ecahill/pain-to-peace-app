@@ -103,6 +103,12 @@ export default function LibraryScreen() {
   }, []);
 
   const handleTrackPress = (track: Track) => {
+    // Only allow access to free tracks for guests
+    if (isGuest && !track.isFree) {
+      // TODO: Show upgrade prompt/modal
+      console.log('Premium track - show upgrade prompt');
+      return;
+    }
     router.push('/player');
   };
 
@@ -118,8 +124,7 @@ export default function LibraryScreen() {
     const matchesCategory = selectedCategory === 'all' || track.category === categories.find(c => c.id === selectedCategory)?.filter;
     const matchesSearch = track.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          track.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesAccess = !isGuest || track.isFree; // Show only free tracks for guests
-    return matchesCategory && matchesSearch && matchesAccess;
+    return matchesCategory && matchesSearch; // Show all tracks, but style premium ones differently for guests
   });
 
   return (
@@ -179,33 +184,62 @@ export default function LibraryScreen() {
 
           {/* Tracks List */}
           <View style={styles.tracksContainer}>
-            {filteredTracks.map((track) => (
+            {filteredTracks.map((track) => {
+              const isLocked = isGuest && !track.isFree;
+              return (
               <TouchableOpacity
                 key={track.id}
-                style={styles.trackCard}
+                style={[
+                  styles.trackCard,
+                  isLocked && styles.trackCardLocked
+                ]}
                 onPress={() => handleTrackPress(track)}
-                activeOpacity={0.7}
+                activeOpacity={isLocked ? 0.3 : 0.7}
+                disabled={isLocked}
               >
                 <View style={styles.trackHeader}>
                   <View style={styles.trackTitleRow}>
-                    <Text style={styles.trackTitle}>{track.title}</Text>
+                    <View style={styles.titleWithLock}>
+                      <Text style={[
+                        styles.trackTitle,
+                        isLocked && styles.trackTitleLocked
+                      ]}>
+                        {track.title}
+                      </Text>
+                      {isLocked && (
+                        <IconSymbol name="lock.fill" size={16} color="#9CA3AF" />
+                      )}
+                    </View>
                     <TouchableOpacity 
                       style={styles.heartButton}
                       onPress={(e) => {
                         e.stopPropagation();
-                        toggleFavorite(track.id);
+                        if (!isLocked) {
+                          toggleFavorite(track.id);
+                        }
                       }}
+                      disabled={isLocked}
                     >
                       <IconSymbol 
                         name={favorites.includes(track.id) ? "heart.fill" : "heart"} 
                         size={20} 
-                        color={favorites.includes(track.id) ? "#EF4444" : "#9CA3AF"} 
+                        color={isLocked ? "#D1D5DB" : (favorites.includes(track.id) ? "#EF4444" : "#9CA3AF")} 
                       />
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.trackDescription}>{track.description}</Text>
+                  <Text style={[
+                    styles.trackDescription,
+                    isLocked && styles.trackDescriptionLocked
+                  ]}>
+                    {track.description}
+                  </Text>
                   <View style={styles.trackFooter}>
-                    <Text style={styles.trackDuration}>{track.duration}</Text>
+                    <Text style={[
+                      styles.trackDuration,
+                      isLocked && styles.trackDurationLocked
+                    ]}>
+                      {track.duration}
+                    </Text>
                     <View style={styles.tagsContainer}>
                       {!track.isFree && (
                         <View style={styles.premiumTag}>
@@ -219,7 +253,8 @@ export default function LibraryScreen() {
                   </View>
                 </View>
               </TouchableOpacity>
-            ))}
+            );
+            })}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -315,6 +350,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  trackCardLocked: {
+    backgroundColor: '#F9FAFB',
+    opacity: 0.6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
   trackHeader: {
     flex: 1,
   },
@@ -324,12 +365,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
   },
+  titleWithLock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+    gap: 8,
+  },
   trackTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1F2937',
-    flex: 1,
-    marginRight: 12,
+  },
+  trackTitleLocked: {
+    color: '#9CA3AF',
   },
   heartButton: {
     padding: 4,
@@ -340,6 +389,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 12,
   },
+  trackDescriptionLocked: {
+    color: '#9CA3AF',
+  },
   trackFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -349,6 +401,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  trackDurationLocked: {
+    color: '#9CA3AF',
   },
   tagsContainer: {
     flexDirection: 'row',

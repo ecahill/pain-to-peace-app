@@ -36,6 +36,7 @@ const MAPPING = {
   'square.and.arrow.up': 'share',
   'gobackward.15': 'replay-15',
   'goforward.15': 'forward-15',
+  'lock.fill': 'lock',
 } as IconMapping;
 
 /**
