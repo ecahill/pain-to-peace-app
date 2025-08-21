@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
 
@@ -16,37 +17,70 @@ interface Track {
   title: string;
   duration: string;
   description: string;
+  category: 'SLEEP' | 'PAIN' | 'ANXIETY';
 }
+
+interface Category {
+  id: string;
+  name: string;
+  filter: string;
+}
+
+const categories: Category[] = [
+  { id: 'all', name: 'All', filter: '' },
+  { id: 'pain', name: 'Pain', filter: 'PAIN' },
+  { id: 'sleep', name: 'Sleep', filter: 'SLEEP' },
+  { id: 'anxiety', name: 'Anxiety', filter: 'ANXIETY' },
+];
 
 const tracks: Track[] = [
   {
     id: '1',
-    title: 'Mindful Relief',
-    duration: '15 min',
-    description: 'Guided meditation to ease chronic pain and tension',
+    title: 'Deep Sleep Journey',
+    duration: '30 min',
+    description: 'Drift into restorative sleep naturally',
+    category: 'SLEEP',
   },
   {
     id: '2',
-    title: 'Evening Calm',
-    duration: '20 min',
-    description: 'Relaxing sounds to unwind after a difficult day',
+    title: 'Pain Release Protocol',
+    duration: '35 min',
+    description: 'Advanced techniques for chronic pain management',
+    category: 'PAIN',
   },
   {
     id: '3',
-    title: 'Peaceful Sleep',
-    duration: '25 min',
-    description: 'Gentle hypnosis to help you drift into restful sleep',
+    title: 'Mindful Relief',
+    duration: '15 min',
+    description: 'Guided meditation to ease chronic pain and tension',
+    category: 'PAIN',
   },
   {
     id: '4',
-    title: 'Body Scan Relief',
-    duration: '18 min',
-    description: 'Progressive relaxation technique for pain management',
+    title: 'Evening Calm',
+    duration: '20 min',
+    description: 'Relaxing sounds to unwind after a difficult day',
+    category: 'ANXIETY',
   },
 ];
 
+const getCategoryColor = (category: Track['category']) => {
+  switch (category) {
+    case 'SLEEP':
+      return '#8B5CF6'; // Purple
+    case 'PAIN':
+      return '#3B82F6'; // Blue
+    case 'ANXIETY':
+      return '#10B981'; // Green
+    default:
+      return '#6B7280'; // Gray
+  }
+};
+
 export default function LibraryScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleTrackPress = (track: Track) => {
     router.push('/player');
@@ -60,89 +94,133 @@ export default function LibraryScreen() {
     );
   };
 
+  const filteredTracks = tracks.filter(track => {
+    const matchesCategory = selectedCategory === 'all' || track.category === categories.find(c => c.id === selectedCategory)?.filter;
+    const matchesSearch = track.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         track.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Library</Text>
-          <TouchableOpacity style={styles.settingsButton}>
-            <IconSymbol name="gear" size={24} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
+    <LinearGradient
+      colors={['#E0F2FE', '#F0F9FF']}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerTitle}>Library</Text>
+              <Text style={styles.headerSubtitle}>Browse our collection as a guest</Text>
+            </View>
+          </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <IconSymbol name="magnifyingglass" size={20} color="#6B7280" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search tracks..."
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <IconSymbol name="magnifyingglass" size={20} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search tracks..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
 
-        {/* Tracks Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tracks</Text>
-          {tracks.map((track) => (
-            <TouchableOpacity
-              key={track.id}
-              style={styles.trackCard}
-              onPress={() => handleTrackPress(track)}
-            >
-              <View style={styles.trackContent}>
-                <View style={styles.trackInfo}>
-                  <Text style={styles.trackTitle}>{track.title}</Text>
-                  <Text style={styles.trackMeta}>{track.duration}</Text>
+          {/* Category Filter Chips */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoryScrollView}
+            contentContainerStyle={styles.categoryContainer}
+          >
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryChip,
+                  selectedCategory === category.id && styles.categoryChipSelected
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  selectedCategory === category.id && styles.categoryChipTextSelected
+                ]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Tracks List */}
+          <View style={styles.tracksContainer}>
+            {filteredTracks.map((track) => (
+              <TouchableOpacity
+                key={track.id}
+                style={styles.trackCard}
+                onPress={() => handleTrackPress(track)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.trackHeader}>
+                  <View style={styles.trackTitleRow}>
+                    <Text style={styles.trackTitle}>{track.title}</Text>
+                    <TouchableOpacity 
+                      style={styles.heartButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(track.id);
+                      }}
+                    >
+                      <IconSymbol 
+                        name={favorites.includes(track.id) ? "heart.fill" : "heart"} 
+                        size={20} 
+                        color={favorites.includes(track.id) ? "#EF4444" : "#9CA3AF"} 
+                      />
+                    </TouchableOpacity>
+                  </View>
                   <Text style={styles.trackDescription}>{track.description}</Text>
+                  <View style={styles.trackFooter}>
+                    <Text style={styles.trackDuration}>{track.duration}</Text>
+                    <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(track.category) }]}>
+                      <Text style={styles.categoryTagText}>{track.category}</Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.trackActions}>
-                  <TouchableOpacity 
-                    style={styles.heartButton}
-                    onPress={() => toggleFavorite(track.id)}
-                  >
-                    <IconSymbol 
-                      name={favorites.includes(track.id) ? "heart.fill" : "heart"} 
-                      size={20} 
-                      color={favorites.includes(track.id) ? "#EF4444" : "#9CA3AF"} 
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.playButton}>
-                    <IconSymbol name="play.fill" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
     paddingHorizontal: 20,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingTop: 20,
     paddingBottom: 24,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#1F2937',
+    marginBottom: 4,
   },
-  settingsButton: {
-    padding: 8,
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -151,10 +229,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 32,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
@@ -164,69 +242,93 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1F2937',
   },
-  section: {
-    marginBottom: 32,
+  categoryScrollView: {
+    marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+  categoryContainer: {
+    paddingRight: 20,
+  },
+  categoryChip: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  categoryChipSelected: {
+    backgroundColor: '#3B82F6',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: '500',
     color: '#1F2937',
-    marginBottom: 16,
+  },
+  categoryChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  tracksContainer: {
+    paddingBottom: 100,
   },
   trackCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
   },
-  trackContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  trackInfo: {
+  trackHeader: {
     flex: 1,
+  },
+  trackTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
   trackTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#1F2937',
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 12,
   },
-  trackMeta: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
+  heartButton: {
+    padding: 4,
   },
   trackDescription: {
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
+    marginBottom: 12,
   },
-  trackActions: {
+  trackFooter: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  heartButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  playButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 24,
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 16,
+  trackDuration: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  categoryTag: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  categoryTagText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });
