@@ -115,12 +115,7 @@ export default function PlayerScreen() {
 
       {/* Bottom Tab Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/')}>
-          <IconSymbol name="house.fill" size={24} color="#9CA3AF" />
-          <Text style={styles.navLabel}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/library')}>
+        <TouchableOpacity style={styles.navItem} onPress={() => router.push('/(tabs)')}>
           <IconSymbol name="book.fill" size={24} color="#9CA3AF" />
           <Text style={styles.navLabel}>Library</Text>
         </TouchableOpacity>

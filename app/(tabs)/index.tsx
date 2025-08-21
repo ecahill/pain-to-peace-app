@@ -1,75 +1,334 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { router } from 'expo-router';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+interface Track {
+  id: string;
+  title: string;
+  duration: string;
+  description: string;
+  category: 'SLEEP' | 'PAIN' | 'ANXIETY';
+}
 
-export default function HomeScreen() {
+interface Category {
+  id: string;
+  name: string;
+  filter: string;
+}
+
+const categories: Category[] = [
+  { id: 'all', name: 'All', filter: '' },
+  { id: 'pain', name: 'Pain', filter: 'PAIN' },
+  { id: 'sleep', name: 'Sleep', filter: 'SLEEP' },
+  { id: 'anxiety', name: 'Anxiety', filter: 'ANXIETY' },
+];
+
+const tracks: Track[] = [
+  {
+    id: '1',
+    title: 'Deep Sleep Journey',
+    duration: '30 min',
+    description: 'Drift into restorative sleep naturally',
+    category: 'SLEEP',
+  },
+  {
+    id: '2',
+    title: 'Pain Release Protocol',
+    duration: '35 min',
+    description: 'Advanced techniques for chronic pain management',
+    category: 'PAIN',
+  },
+  {
+    id: '3',
+    title: 'Mindful Relief',
+    duration: '15 min',
+    description: 'Guided meditation to ease chronic pain and tension',
+    category: 'PAIN',
+  },
+  {
+    id: '4',
+    title: 'Evening Calm',
+    duration: '20 min',
+    description: 'Relaxing sounds to unwind after a difficult day',
+    category: 'ANXIETY',
+  },
+];
+
+const getCategoryColor = (category: Track['category']) => {
+  switch (category) {
+    case 'SLEEP':
+      return '#8B5CF6'; // Purple
+    case 'PAIN':
+      return '#3B82F6'; // Blue
+    case 'ANXIETY':
+      return '#10B981'; // Green
+    default:
+      return '#6B7280'; // Gray
+  }
+};
+
+export default function LibraryScreen() {
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleTrackPress = (track: Track) => {
+    router.push('/player');
+  };
+
+  const toggleFavorite = (trackId: string) => {
+    setFavorites(prev => 
+      prev.includes(trackId) 
+        ? prev.filter(id => id !== trackId)
+        : [...prev, trackId]
+    );
+  };
+
+  const filteredTracks = tracks.filter(track => {
+    const matchesCategory = selectedCategory === 'all' || track.category === categories.find(c => c.id === selectedCategory)?.filter;
+    const matchesSearch = track.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         track.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <LinearGradient
+      colors={['#E0F2FE', '#F0F9FF']}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.headerTitle}>Library</Text>
+              <Text style={styles.headerSubtitle}>Browse our collection as a guest</Text>
+            </View>
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <IconSymbol name="magnifyingglass" size={20} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search tracks..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+
+          {/* Category Filter Chips */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.categoryScrollView}
+            contentContainerStyle={styles.categoryContainer}
+          >
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryChip,
+                  selectedCategory === category.id && styles.categoryChipSelected
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  selectedCategory === category.id && styles.categoryChipTextSelected
+                ]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Tracks List */}
+          <View style={styles.tracksContainer}>
+            {filteredTracks.map((track) => (
+              <TouchableOpacity
+                key={track.id}
+                style={styles.trackCard}
+                onPress={() => handleTrackPress(track)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.trackHeader}>
+                  <View style={styles.trackTitleRow}>
+                    <Text style={styles.trackTitle}>{track.title}</Text>
+                    <TouchableOpacity 
+                      style={styles.heartButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(track.id);
+                      }}
+                    >
+                      <IconSymbol 
+                        name={favorites.includes(track.id) ? "heart.fill" : "heart"} 
+                        size={20} 
+                        color={favorites.includes(track.id) ? "#EF4444" : "#9CA3AF"} 
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.trackDescription}>{track.description}</Text>
+                  <View style={styles.trackFooter}>
+                    <Text style={styles.trackDuration}>{track.duration}</Text>
+                    <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(track.category) }]}>
+                      <Text style={styles.categoryTagText}>{track.category}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  header: {
+    paddingTop: 20,
+    paddingBottom: 24,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  stepContainer: {
-    gap: 8,
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  categoryScrollView: {
+    marginBottom: 24,
+  },
+  categoryContainer: {
+    paddingRight: 20,
+  },
+  categoryChip: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  categoryChipSelected: {
+    backgroundColor: '#3B82F6',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  categoryChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  tracksContainer: {
+    paddingBottom: 100,
+  },
+  trackCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  trackHeader: {
+    flex: 1,
+  },
+  trackTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  trackTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    flex: 1,
+    marginRight: 12,
+  },
+  heartButton: {
+    padding: 4,
+  },
+  trackDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  trackFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  trackDuration: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  categoryTag: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  categoryTagText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

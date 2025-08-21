@@ -10,7 +10,7 @@ export default function LoginScreen() {
     const handleLogin = () => {
         // TODO: Add authentication logic here
         console.log('Logging in with:', email, password);
-        router.push('/library'); // or whatever the next screen should be
+        router.push('/(tabs)'); // Navigate to main tabs (Library is the default)
     };
 
     return (

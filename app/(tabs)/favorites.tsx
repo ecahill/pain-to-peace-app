@@ -79,7 +79,7 @@ export default function FavoritesScreen() {
             </Text>
             <TouchableOpacity 
               style={styles.browseButton}
-              onPress={() => router.push('/library')}
+              onPress={() => router.push('/(tabs)')}
             >
               <Text style={styles.browseButtonText}>Explore tracks</Text>
             </TouchableOpacity>
