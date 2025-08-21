@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Track {
   id: string;
@@ -18,6 +19,7 @@ interface Track {
   duration: string;
   description: string;
   category: 'SLEEP' | 'PAIN' | 'ANXIETY';
+  isFree: boolean;
 }
 
 interface Category {
@@ -40,6 +42,7 @@ const tracks: Track[] = [
     duration: '30 min',
     description: 'Drift into restorative sleep naturally',
     category: 'SLEEP',
+    isFree: true,
   },
   {
     id: '2',
@@ -47,6 +50,7 @@ const tracks: Track[] = [
     duration: '35 min',
     description: 'Advanced techniques for chronic pain management',
     category: 'PAIN',
+    isFree: false,
   },
   {
     id: '3',
@@ -54,6 +58,7 @@ const tracks: Track[] = [
     duration: '15 min',
     description: 'Guided meditation to ease chronic pain and tension',
     category: 'PAIN',
+    isFree: true,
   },
   {
     id: '4',
@@ -61,6 +66,7 @@ const tracks: Track[] = [
     duration: '20 min',
     description: 'Relaxing sounds to unwind after a difficult day',
     category: 'ANXIETY',
+    isFree: false,
   },
 ];
 
@@ -81,6 +87,20 @@ export default function LibraryScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isGuest, setIsGuest] = useState(false);
+
+  // Check if user is a guest on component mount
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      try {
+        const guestStatus = await AsyncStorage.getItem('isGuest');
+        setIsGuest(guestStatus === 'true');
+      } catch (error) {
+        console.error('Error checking user status:', error);
+      }
+    };
+    checkUserStatus();
+  }, []);
 
   const handleTrackPress = (track: Track) => {
     router.push('/player');
@@ -98,7 +118,8 @@ export default function LibraryScreen() {
     const matchesCategory = selectedCategory === 'all' || track.category === categories.find(c => c.id === selectedCategory)?.filter;
     const matchesSearch = track.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          track.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    const matchesAccess = !isGuest || track.isFree; // Show only free tracks for guests
+    return matchesCategory && matchesSearch && matchesAccess;
   });
 
   return (
@@ -112,7 +133,9 @@ export default function LibraryScreen() {
           <View style={styles.header}>
             <View>
               <Text style={styles.headerTitle}>Library</Text>
-              <Text style={styles.headerSubtitle}>Browse our collection as a guest</Text>
+              <Text style={styles.headerSubtitle}>
+                {isGuest ? 'Free tracks available as a guest' : 'Browse our collection'}
+              </Text>
             </View>
           </View>
 
@@ -183,8 +206,15 @@ export default function LibraryScreen() {
                   <Text style={styles.trackDescription}>{track.description}</Text>
                   <View style={styles.trackFooter}>
                     <Text style={styles.trackDuration}>{track.duration}</Text>
-                    <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(track.category) }]}>
-                      <Text style={styles.categoryTagText}>{track.category}</Text>
+                    <View style={styles.tagsContainer}>
+                      {!track.isFree && (
+                        <View style={styles.premiumTag}>
+                          <Text style={styles.premiumTagText}>PREMIUM</Text>
+                        </View>
+                      )}
+                      <View style={[styles.categoryTag, { backgroundColor: getCategoryColor(track.category) }]}>
+                        <Text style={styles.categoryTagText}>{track.category}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
@@ -319,6 +349,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  premiumTag: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  premiumTagText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   categoryTag: {
     borderRadius: 12,

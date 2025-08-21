@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WelcomeScreen = () => {
     const router = useRouter();
@@ -21,7 +22,10 @@ const WelcomeScreen = () => {
                 <Text style={styles.secondaryButtonText}>Log In</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.push('/auth')}>
+            <TouchableOpacity onPress={async () => {
+                await AsyncStorage.setItem('isGuest', 'true');
+                router.push('/(tabs)');
+            }}>
                 <Text style={styles.guestText}>Continue as Guest</Text>
             </TouchableOpacity>
         </View>

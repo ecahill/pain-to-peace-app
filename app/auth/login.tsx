@@ -2,14 +2,16 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         // TODO: Add authentication logic here
         console.log('Logging in with:', email, password);
+        await AsyncStorage.setItem('isGuest', 'false');
         router.push('/(tabs)'); // Navigate to main tabs (Library is the default)
     };
 

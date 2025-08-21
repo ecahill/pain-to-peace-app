@@ -1,26 +1,30 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AuthScreen() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const handleLogin = () => {
+    const handleLogin = async () => {
         // Replace this with real login logic later
         console.log('Logging in with', email, password);
-        router.push('/home'); // placeholder destination
+        await AsyncStorage.setItem('isGuest', 'false');
+        router.push('/(tabs)');
     };
 
-    const handleSignup = () => {
+    const handleSignup = async () => {
         console.log('Signing up with', email, password);
-        router.push('/home');
+        await AsyncStorage.setItem('isGuest', 'false');
+        router.push('/(tabs)');
     };
 
-    const handleGuest = () => {
+    const handleGuest = async () => {
         console.log('Continuing as guest');
-        router.push('/home');
+        await AsyncStorage.setItem('isGuest', 'true');
+        router.push('/(tabs)');
     };
 
     return (
