@@ -30,13 +30,6 @@ export default function PlayerScreen() {
     setIsPlaying(!isPlaying);
   };
 
-  const handleSkipBack = () => {
-    setCurrentTime(Math.max(0, currentTime - 15));
-  };
-
-  const handleSkipForward = () => {
-    setCurrentTime(Math.min(totalTime, currentTime + 15));
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -80,7 +73,7 @@ export default function PlayerScreen() {
       {/* Session Info */}
       <View style={styles.sessionInfo}>
         <Text style={styles.sessionTitle}>Mindful Relief</Text>
-        <Text style={styles.sessionAuthor}>Dr. Anya Sharma</Text>
+        <Text style={styles.sessionDescription}>Guided meditation to ease chronic pain and tension</Text>
       </View>
 
       {/* Progress Bar */}
@@ -96,20 +89,12 @@ export default function PlayerScreen() {
 
       {/* Media Controls */}
       <View style={styles.controlsContainer}>
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkipBack}>
-          <IconSymbol name="gobackward.15" size={28} color="#1F2937" />
-        </TouchableOpacity>
-        
         <TouchableOpacity style={styles.playButton} onPress={handlePlayPause}>
           <IconSymbol 
             name={isPlaying ? "pause.fill" : "play.fill"} 
             size={32} 
             color="#FFFFFF" 
           />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkipForward}>
-          <IconSymbol name="goforward.15" size={28} color="#1F2937" />
         </TouchableOpacity>
       </View>
 
@@ -210,9 +195,12 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 8,
   },
-  sessionAuthor: {
+  sessionDescription: {
     fontSize: 16,
     color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
   progressContainer: {
     paddingHorizontal: 20,
@@ -241,21 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 40,
     marginBottom: 60,
-  },
-  skipButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   playButton: {
     width: 80,
