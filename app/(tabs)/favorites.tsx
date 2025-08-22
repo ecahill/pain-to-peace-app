@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,30 +6,140 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase/firebaseConfig';
+import { audioService } from '../../services/audioService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FavoriteTrack {
   id: string;
   title: string;
   duration: string;
   description: string;
-  color: string;
+  category: 'SLEEP' | 'PAIN' | 'ANXIETY';
+  isFree: boolean;
 }
 
-const initialFavorites: FavoriteTrack[] = [];
+const getCategoryColor = (category: FavoriteTrack['category']) => {
+  switch (category) {
+    case 'SLEEP':
+      return '#8B5CF6'; // Purple
+    case 'PAIN':
+      return '#3B82F6'; // Blue
+    case 'ANXIETY':
+      return '#10B981'; // Green
+    default:
+      return '#6B7280'; // Gray
+  }
+};
 
 export default function FavoritesScreen() {
-  const [favorites, setFavorites] = useState<FavoriteTrack[]>(initialFavorites);
+  const [favorites, setFavorites] = useState<FavoriteTrack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [isGuest, setIsGuest] = useState(false);
 
-  const handleRemoveFavorite = (id: string) => {
-    setFavorites(favorites.filter(track => track.id !== id));
+  useEffect(() => {
+    const checkUserAndLoadFavorites = async () => {
+      try {
+        // Check guest status
+        const guestStatus = await AsyncStorage.getItem('isGuest');
+        setIsGuest(guestStatus === 'true');
+      } catch (error) {
+        console.error('Error checking user status:', error);
+      }
+    };
+
+    checkUserAndLoadFavorites();
+
+    // Listen to auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      if (user && !isGuest) {
+        await loadUserFavorites(user.uid);
+      } else {
+        setFavorites([]);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isGuest]);
+
+  const loadUserFavorites = async (userId: string) => {
+    try {
+      setLoading(true);
+      const userFavorites = await audioService.getUserFavorites(userId);
+      setFavorites(userFavorites);
+    } catch (error) {
+      console.error('Error loading user favorites:', error);
+      Alert.alert('Error', 'Failed to load favorites');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveFavorite = async (id: string) => {
+    if (isGuest || !user) {
+      Alert.alert('Login Required', 'Please log in to manage favorites');
+      return;
+    }
+
+    try {
+      await audioService.removeFromFavorites(user.uid, id);
+      setFavorites(favorites.filter(track => track.id !== id));
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+      Alert.alert('Error', 'Failed to remove from favorites');
+    }
   };
 
   const handleTrackPress = (track: FavoriteTrack) => {
     router.push('/player');
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Loading favorites...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isGuest || !user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>My Favorites</Text>
+          </View>
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconContainer}>
+              <IconSymbol name="person.crop.circle" size={48} color="#D1D5DB" />
+            </View>
+            <Text style={styles.emptyTitle}>Login Required</Text>
+            <Text style={styles.emptySubtitle}>
+              Please log in to save and view your favorite tracks
+            </Text>
+            <TouchableOpacity 
+              style={styles.browseButton}
+              onPress={() => router.push('/auth/login')}
+            >
+              <Text style={styles.browseButtonText}>Login</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,7 +159,7 @@ export default function FavoritesScreen() {
                 onPress={() => handleTrackPress(track)}
               >
                 <View style={styles.favoriteContent}>
-                  <View style={[styles.favoriteIcon, { backgroundColor: track.color }]}>
+                  <View style={[styles.favoriteIcon, { backgroundColor: getCategoryColor(track.category) }]}>
                     <IconSymbol name="play.fill" size={16} color="#FFFFFF" />
                   </View>
                   <View style={styles.favoriteInfo}>
@@ -206,5 +316,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
   },
 });

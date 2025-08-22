@@ -1,18 +1,41 @@
 // app/login.tsx
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase/firebaseConfig';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
-        // TODO: Add authentication logic here
-        console.log('Logging in with:', email, password);
-        await AsyncStorage.setItem('isGuest', 'false');
-        router.push('/(tabs)'); // Navigate to main tabs (Library is the default)
+        if (!email.trim() || !password.trim()) {
+            Alert.alert('Error', 'Please enter both email and password');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await signInWithEmailAndPassword(auth, email.trim(), password);
+            await AsyncStorage.setItem('isGuest', 'false');
+            router.push('/(tabs)');
+        } catch (error: any) {
+            const errorMessage = error.code === 'auth/invalid-credential' 
+                ? 'Invalid email or password'
+                : error.code === 'auth/user-not-found'
+                ? 'No account found with this email'
+                : error.code === 'auth/wrong-password'
+                ? 'Incorrect password'
+                : error.code === 'auth/too-many-requests'
+                ? 'Too many failed attempts. Please try again later.'
+                : 'Login failed. Please try again.';
+            Alert.alert('Login Error', errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -38,8 +61,16 @@ export default function LoginScreen() {
                 value={password}
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                <Text style={styles.buttonText}>Log In</Text>
+            <TouchableOpacity 
+                style={[styles.button, loading && styles.buttonDisabled]} 
+                onPress={handleLogin}
+                disabled={loading}
+            >
+                {loading ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={styles.buttonText}>Log In</Text>
+                )}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => router.push('/signup')}>
@@ -86,6 +117,10 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
         fontSize: 16,
+    },
+    buttonDisabled: {
+        backgroundColor: '#9CA3AF',
+        opacity: 0.6,
     },
     link: {
         color: '#3f7be6',

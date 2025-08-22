@@ -7,11 +7,16 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase/firebaseConfig';
+import { audioService } from '../../services/audioService';
 
 interface Track {
   id: string;
@@ -35,7 +40,8 @@ const categories: Category[] = [
   { id: 'anxiety', name: 'Anxiety', filter: 'ANXIETY' },
 ];
 
-const tracks: Track[] = [
+// Mock data as fallback
+const fallbackTracks: Track[] = [
   {
     id: '1',
     title: 'Deep Sleep Journey',
@@ -88,19 +94,61 @@ export default function LibraryScreen() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isGuest, setIsGuest] = useState(false);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
-  // Check if user is a guest on component mount
+  // Check if user is authenticated and load tracks
   useEffect(() => {
-    const checkUserStatus = async () => {
+    const checkUserAndLoadTracks = async () => {
       try {
+        // Check guest status
         const guestStatus = await AsyncStorage.getItem('isGuest');
         setIsGuest(guestStatus === 'true');
+
+        // Load tracks from Firebase
+        await loadTracks();
       } catch (error) {
-        console.error('Error checking user status:', error);
+        console.error('Error during initialization:', error);
+        // Use fallback tracks if Firebase fails
+        setTracks(fallbackTracks);
+      } finally {
+        setLoading(false);
       }
     };
-    checkUserStatus();
+
+    checkUserAndLoadTracks();
+
+    // Listen to auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      if (user && !isGuest) {
+        // Load user favorites
+        await loadUserFavorites(user.uid);
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
+
+  const loadTracks = async () => {
+    try {
+      const tracksData = await audioService.getTracks();
+      setTracks(tracksData.length > 0 ? tracksData : fallbackTracks);
+    } catch (error) {
+      console.error('Error loading tracks:', error);
+      setTracks(fallbackTracks);
+    }
+  };
+
+  const loadUserFavorites = async (userId: string) => {
+    try {
+      const userFavorites = await audioService.getUserFavorites(userId);
+      setFavorites(userFavorites.map(track => track.id));
+    } catch (error) {
+      console.error('Error loading user favorites:', error);
+    }
+  };
 
   const handleTrackPress = (track: Track) => {
     // Only allow access to free tracks for guests
@@ -112,12 +160,26 @@ export default function LibraryScreen() {
     router.push('/player');
   };
 
-  const toggleFavorite = (trackId: string) => {
-    setFavorites(prev => 
-      prev.includes(trackId) 
-        ? prev.filter(id => id !== trackId)
-        : [...prev, trackId]
-    );
+  const toggleFavorite = async (trackId: string) => {
+    if (isGuest || !user) {
+      Alert.alert('Login Required', 'Please log in to save favorites');
+      return;
+    }
+
+    try {
+      const isFavorite = favorites.includes(trackId);
+      
+      if (isFavorite) {
+        await audioService.removeFromFavorites(user.uid, trackId);
+        setFavorites(prev => prev.filter(id => id !== trackId));
+      } else {
+        await audioService.addToFavorites(user.uid, trackId);
+        setFavorites(prev => [...prev, trackId]);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorites');
+    }
   };
 
   const filteredTracks = tracks.filter(track => {
@@ -126,6 +188,22 @@ export default function LibraryScreen() {
                          track.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch; // Show all tracks, but style premium ones differently for guests
   });
+
+  if (loading) {
+    return (
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF']}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={styles.loadingText}>Loading tracks...</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -431,5 +509,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
   },
 });
