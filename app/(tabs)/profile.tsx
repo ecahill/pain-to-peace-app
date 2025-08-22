@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { runAllFirebaseTests } from '../../utils/testFirebase';
+import { audioService } from '../../services/audioService';
 
 interface StatCard {
   title: string;
@@ -44,7 +48,63 @@ const stats: StatCard[] = [
 ];
 
 export default function ProfileScreen() {
+  const [isTestingFirebase, setIsTestingFirebase] = useState(false);
+  const [isAddingSampleTracks, setIsAddingSampleTracks] = useState(false);
+
+  const handleFirebaseTest = async () => {
+    setIsTestingFirebase(true);
+    try {
+      console.log('🚀 Starting Firebase connection test...');
+      const results = await runAllFirebaseTests();
+      
+      const allPassed = Object.values(results).every(result => result === true);
+      
+      Alert.alert(
+        'Firebase Test Results',
+        `Firestore: ${results.firestore ? '✅ PASS' : '❌ FAIL'}\n` +
+        `Auth: ${results.auth ? '✅ PASS' : '❌ FAIL'}\n` +
+        `Storage: ${results.storage ? '✅ PASS' : '❌ FAIL'}\n\n` +
+        `Overall: ${allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}\n\n` +
+        'Check console for detailed logs.'
+      );
+    } catch (error) {
+      console.error('Error running Firebase tests:', error);
+      Alert.alert('Test Error', 'Failed to run Firebase tests. Check console for details.');
+    } finally {
+      setIsTestingFirebase(false);
+    }
+  };
+
+  const handleAddSampleTracks = async () => {
+    setIsAddingSampleTracks(true);
+    try {
+      console.log('🎵 Manually adding sample tracks...');
+      const wasAdded = await audioService.initializeSampleTracks();
+      
+      if (wasAdded) {
+        Alert.alert('Success', 'Sample tracks have been added to Firestore! Check the Library tab to see them.');
+      } else {
+        Alert.alert('Info', 'Sample tracks already exist in Firestore. No new tracks were added.');
+      }
+    } catch (error) {
+      console.error('Error adding sample tracks:', error);
+      Alert.alert('Error', 'Failed to add sample tracks. Check console for details.');
+    } finally {
+      setIsAddingSampleTracks(false);
+    }
+  };
+
   const menuItems: MenuItem[] = [
+    {
+      title: 'Test Firebase Connection',
+      icon: 'flame.fill',
+      action: handleFirebaseTest,
+    },
+    {
+      title: 'Add Sample Tracks',
+      icon: 'music.note.list',
+      action: handleAddSampleTracks,
+    },
     {
       title: 'Settings',
       icon: 'gear',
@@ -111,24 +171,45 @@ export default function ProfileScreen() {
               style={[
                 styles.menuItem,
                 item.title === 'Sign Out' && styles.signOutItem,
+                item.title === 'Test Firebase Connection' && styles.testFirebaseItem,
+                item.title === 'Add Sample Tracks' && styles.testFirebaseItem,
               ]}
               onPress={item.action}
+              disabled={
+                (item.title === 'Test Firebase Connection' && isTestingFirebase) ||
+                (item.title === 'Add Sample Tracks' && isAddingSampleTracks)
+              }
             >
               <View style={styles.menuItemContent}>
                 <View style={styles.menuItemLeft}>
                   <IconSymbol 
                     name={item.icon} 
                     size={20} 
-                    color={item.title === 'Sign Out' ? '#EF4444' : '#6B7280'} 
+                    color={
+                      item.title === 'Sign Out' ? '#EF4444' : 
+                      item.title === 'Test Firebase Connection' ? '#F59E0B' : 
+                      item.title === 'Add Sample Tracks' ? '#3B82F6' :
+                      '#6B7280'
+                    } 
                   />
                   <Text style={[
                     styles.menuItemText,
                     item.title === 'Sign Out' && styles.signOutText,
+                    item.title === 'Test Firebase Connection' && styles.testFirebaseText,
+                    item.title === 'Add Sample Tracks' && styles.addTracksText,
                   ]}>
                     {item.title}
                   </Text>
                 </View>
-                <IconSymbol name="chevron.right" size={16} color="#D1D5DB" />
+                {(item.title === 'Test Firebase Connection' && isTestingFirebase) ||
+                 (item.title === 'Add Sample Tracks' && isAddingSampleTracks) ? (
+                  <ActivityIndicator 
+                    size="small" 
+                    color={item.title === 'Test Firebase Connection' ? '#F59E0B' : '#3B82F6'} 
+                  />
+                ) : (
+                  <IconSymbol name="chevron.right" size={16} color="#D1D5DB" />
+                )}
               </View>
             </TouchableOpacity>
           ))}
@@ -265,5 +346,17 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     color: '#EF4444',
+  },
+  testFirebaseItem: {
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+  },
+  testFirebaseText: {
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  addTracksText: {
+    color: '#3B82F6',
+    fontWeight: '600',
   },
 });

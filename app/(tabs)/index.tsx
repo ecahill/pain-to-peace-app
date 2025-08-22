@@ -133,10 +133,19 @@ export default function LibraryScreen() {
 
   const loadTracks = async () => {
     try {
+      console.log('📚 Loading tracks from Firebase...');
+      
+      // First, try to initialize sample tracks if collection is empty
+      await audioService.initializeSampleTracks();
+      
+      // Then fetch all tracks
       const tracksData = await audioService.getTracks();
+      console.log(`📊 Loaded ${tracksData.length} tracks from Firebase`);
+      
       setTracks(tracksData.length > 0 ? tracksData : fallbackTracks);
     } catch (error) {
-      console.error('Error loading tracks:', error);
+      console.error('❌ Error loading tracks:', error);
+      console.log('🔄 Using fallback tracks instead');
       setTracks(fallbackTracks);
     }
   };

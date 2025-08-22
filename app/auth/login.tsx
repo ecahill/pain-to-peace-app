@@ -12,17 +12,34 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
+        console.log('🔑 Login screen - Login attempt started');
+        console.log('📧 Email:', email);
+        console.log('🔒 Password length:', password.length);
+        
         if (!email.trim() || !password.trim()) {
+            console.log('❌ Login failed: Empty email or password');
             Alert.alert('Error', 'Please enter both email and password');
             return;
         }
 
         setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email.trim(), password);
+            console.log('🚀 Attempting Firebase signInWithEmailAndPassword...');
+            const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+            console.log('✅ Firebase login successful!');
+            console.log('👤 User ID:', userCredential.user.uid);
+            console.log('📧 User email:', userCredential.user.email);
+            
             await AsyncStorage.setItem('isGuest', 'false');
+            console.log('💾 Guest status set to false');
+            
+            console.log('🧭 Navigating to tabs...');
             router.push('/(tabs)');
         } catch (error: any) {
+            console.error('❌ Firebase login error:', error);
+            console.error('🏷️  Error code:', error.code);
+            console.error('📝 Error message:', error.message);
+            
             const errorMessage = error.code === 'auth/invalid-credential' 
                 ? 'Invalid email or password'
                 : error.code === 'auth/user-not-found'
@@ -35,6 +52,7 @@ export default function LoginScreen() {
             Alert.alert('Login Error', errorMessage);
         } finally {
             setLoading(false);
+            console.log('🏁 Login attempt finished');
         }
     };
 

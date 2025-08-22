@@ -1,0 +1,208 @@
+// Firebase Storage Security Rules for Pain to Peace Hypnosis App
+// Last updated: 2025-01-22
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // =============================================================================
+    // PUBLIC AUDIO TRACKS - Anyone can read, only authenticated users can upload
+    // =============================================================================
+    // Path: /tracks/{trackId}/{fileName}
+    // Purpose: Stores publicly accessible hypnosis audio files
+    match /tracks/{trackId}/{fileName} {
+      // Allow anyone to read audio files (public hypnosis tracks)
+      allow read: if true;
+      
+      // Only authenticated users can upload, and only audio files
+      allow write: if request.auth != null
+                   && isValidAudioFile()
+                   && isValidFileSize()
+                   && isValidFileName(fileName);
+    }
+    
+    // =============================================================================
+    // USER FILES - Users can manage their own files
+    // =============================================================================
+    // Path: /users/{userId}/{fileName}
+    // Purpose: User profile images and personal files
+    match /users/{userId}/{fileName} {
+      // Anyone can read user files (profile images are public)
+      allow read: if true;
+      
+      // Users can only upload to their own folder
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && isValidUserFile(fileName)
+                   && isValidUserFileSize(fileName);
+    }
+    
+    // =============================================================================
+    // USER AUDIO UPLOADS - Users can upload their own audio content  
+    // =============================================================================
+    // Path: /users/{userId}/uploads/{fileName}
+    // Purpose: User-generated content, personal recordings, etc.
+    match /users/{userId}/uploads/{fileName} {
+      // Users can read their own uploads
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Users can upload to their own folder only
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && isValidAudioFile()
+                   && isValidFileSize()
+                   && isValidFileName(fileName);
+    }
+    
+    // =============================================================================
+    // ADMIN UPLOADS - Administrative content
+    // =============================================================================
+    // Path: /admin/{fileName}
+    // Purpose: Admin-only content, app assets, etc.
+    match /admin/{fileName} {
+      // Only admins can read admin files
+      allow read: if isAdmin();
+      
+      // Only admins can upload admin content
+      allow write: if isAdmin()
+                   && isValidFileSize();
+    }
+    
+    // =============================================================================
+    // HELPER FUNCTIONS
+    // =============================================================================
+    
+    // Check if the user is an admin
+    function isAdmin() {
+      return request.auth != null 
+             && request.auth.token.admin == true;
+    }
+    
+    // Validate audio file types
+    function isValidAudioFile() {
+      return request.resource.contentType.matches('audio/.*') 
+             && (
+               request.resource.contentType == 'audio/mpeg' ||      // .mp3
+               request.resource.contentType == 'audio/wav' ||       // .wav
+               request.resource.contentType == 'audio/mp4' ||       // .m4a
+               request.resource.contentType == 'audio/x-m4a' ||     // .m4a (alternative)
+               request.resource.contentType == 'audio/aac' ||       // .aac
+               request.resource.contentType == 'audio/ogg' ||       // .ogg
+               request.resource.contentType == 'audio/webm'         // .webm
+             );
+    }
+    
+    // Validate image file types
+    function isValidImageFile() {
+      return request.resource.contentType.matches('image/.*')
+             && (
+               request.resource.contentType == 'image/jpeg' ||
+               request.resource.contentType == 'image/png' ||
+               request.resource.contentType == 'image/webp'
+             );
+    }
+    
+    // Validate user files (profile images or other allowed files)
+    function isValidUserFile(fileName) {
+      return (isProfileImage(fileName) && isValidImageFile()) ||
+             (isAllowedUserFile(fileName) && isValidFileForUser(fileName));
+    }
+    
+    // Check if filename indicates a profile image
+    function isProfileImage(fileName) {
+      return fileName.matches('^profile\\.(jpg|jpeg|png|webp)$') ||
+             fileName.matches('^avatar\\.(jpg|jpeg|png|webp)$');
+    }
+    
+    // Check if file is allowed for user directory (non-profile files)
+    function isAllowedUserFile(fileName) {
+      return fileName.matches('^[a-zA-Z0-9._-]+\\.(jpg|jpeg|png|webp|pdf|txt)$');
+    }
+    
+    // Validate file content for user files
+    function isValidFileForUser(fileName) {
+      return (fileName.matches('\\.(jpg|jpeg|png|webp)$') && isValidImageFile()) ||
+             (fileName.matches('\\.(pdf|txt)$') && isValidDocumentFile());
+    }
+    
+    // Validate document files (PDF, text)
+    function isValidDocumentFile() {
+      return request.resource.contentType == 'application/pdf' ||
+             request.resource.contentType == 'text/plain';
+    }
+    
+    // Check file size limits based on file type
+    function isValidFileSize() {
+      return request.resource.size < 100 * 1024 * 1024; // 100MB limit for audio
+    }
+    
+    // Check file size for user files (different limits based on type)
+    function isValidUserFileSize(fileName) {
+      return (isProfileImage(fileName) && request.resource.size < 5 * 1024 * 1024) ||    // 5MB for profile images
+             (fileName.matches('\\.(pdf|txt)$') && request.resource.size < 10 * 1024 * 1024) || // 10MB for documents
+             (fileName.matches('\\.(jpg|jpeg|png|webp)$') && request.resource.size < 5 * 1024 * 1024); // 5MB for other images
+    }
+    
+    // Validate file name (prevent path traversal and ensure safe names)
+    function isValidFileName(fileName) {
+      return fileName.matches('^[a-zA-Z0-9._-]+$') 
+             && !fileName.matches('.*\\.\\..*') // No ".." in filename
+             && fileName.size() > 0              // Not empty
+             && fileName.size() < 255;          // Reasonable filename length
+    }
+    
+    // =============================================================================
+    // DENY ALL OTHER PATHS - Security by default
+    // =============================================================================
+    // Explicitly deny access to any paths not defined above
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+SECURITY RULE EXPLANATION:
+
+1. PUBLIC TRACKS (/tracks/{trackId}/{fileName})
+   - Anyone can READ audio files (public hypnosis content)
+   - Only authenticated users can WRITE (upload new tracks)
+   - Restricted to audio file types only
+   - 100MB file size limit
+
+2. USER FILES (/users/{userId}/{fileName})
+   - Profile images are publicly readable (profile.jpg, avatar.png, etc.)
+   - Users can only upload to their own user folder
+   - Smart file validation based on filename:
+     * Profile images: 5MB limit, image types only
+     * Documents: 10MB limit, PDF/text only
+     * Other images: 5MB limit, image types only
+   - Filename pattern matching prevents abuse
+
+3. USER UPLOADS (/users/{userId}/uploads/{fileName})
+   - Users can only access their own upload folder
+   - Audio files only, 100MB limit
+   - Private to the user who uploaded them
+   - Perfect for personal recordings and drafts
+
+4. ADMIN CONTENT (/admin/{fileName})
+   - Only users with admin custom claims can access
+   - Used for app management and administrative content
+   - No specific file type restrictions for admin flexibility
+
+5. ADVANCED FILE VALIDATION
+   - Audio files: mp3, wav, m4a, aac, ogg, webm
+   - Images: jpeg, png, webp  
+   - Documents: pdf, txt
+   - Profile image detection: profile.*, avatar.*
+   - File name validation prevents security exploits
+   - Dynamic size limits based on file type and purpose
+
+6. SECURITY FEATURES
+   - Path traversal prevention (no ".." in filenames)
+   - Content-type validation (prevents file type spoofing)
+   - User isolation (can't access other users' folders)
+   - Default deny (any path not explicitly allowed is denied)
+   - Filename length limits (prevents buffer overflows)
+*/

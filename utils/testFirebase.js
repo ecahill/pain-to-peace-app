@@ -1,5 +1,5 @@
 // Firebase connection test utility
-import { db } from '../config/firebase';
+import { db, auth, storage } from '../app/firebase/firebaseConfig';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 
 /**
@@ -47,9 +47,10 @@ export const testFirebaseConnection = async () => {
  */
 export const testFirebaseAuth = async () => {
   try {
-    const { auth } = await import('../config/firebase');
     console.log('🔐 Firebase Auth initialized successfully');
     console.log('👤 Current user:', auth.currentUser ? 'Logged in' : 'Not logged in');
+    console.log('🆔 User ID:', auth.currentUser?.uid || 'N/A');
+    console.log('📧 User email:', auth.currentUser?.email || 'N/A');
     return true;
   } catch (error) {
     console.error('❌ Firebase Auth initialization failed:', error.message);
@@ -64,7 +65,6 @@ export const testFirebaseAuth = async () => {
  */
 export const testFirebaseStorage = async () => {
   try {
-    const { storage } = await import('../config/firebase');
     console.log('📁 Firebase Storage initialized successfully');
     console.log('🗄️  Storage bucket:', storage.app.options.storageBucket);
     return true;

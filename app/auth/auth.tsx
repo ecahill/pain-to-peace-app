@@ -12,17 +12,34 @@ export default function AuthScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleLogin = async () => {
+        console.log('🔑 Login attempt started');
+        console.log('📧 Email:', email);
+        console.log('🔒 Password length:', password.length);
+        
         if (!email.trim() || !password.trim()) {
+            console.log('❌ Login failed: Empty email or password');
             Alert.alert('Error', 'Please enter both email and password');
             return;
         }
 
         setLoading(true);
         try {
-            await signInWithEmailAndPassword(auth, email.trim(), password);
+            console.log('🚀 Attempting Firebase signInWithEmailAndPassword...');
+            const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+            console.log('✅ Firebase login successful!');
+            console.log('👤 User ID:', userCredential.user.uid);
+            console.log('📧 User email:', userCredential.user.email);
+            
             await AsyncStorage.setItem('isGuest', 'false');
+            console.log('💾 Guest status set to false');
+            
+            console.log('🧭 Navigating to tabs...');
             router.push('/(tabs)');
         } catch (error: any) {
+            console.error('❌ Firebase login error:', error);
+            console.error('🏷️  Error code:', error.code);
+            console.error('📝 Error message:', error.message);
+            
             const errorMessage = error.code === 'auth/invalid-credential' 
                 ? 'Invalid email or password'
                 : error.code === 'auth/user-not-found'
@@ -33,26 +50,45 @@ export default function AuthScreen() {
             Alert.alert('Login Error', errorMessage);
         } finally {
             setLoading(false);
+            console.log('🏁 Login attempt finished');
         }
     };
 
     const handleSignup = async () => {
+        console.log('📝 Signup attempt started');
+        console.log('📧 Email:', email);
+        console.log('🔒 Password length:', password.length);
+        
         if (!email.trim() || !password.trim()) {
+            console.log('❌ Signup failed: Empty email or password');
             Alert.alert('Error', 'Please enter both email and password');
             return;
         }
 
         if (password.length < 6) {
+            console.log('❌ Signup failed: Password too short');
             Alert.alert('Error', 'Password must be at least 6 characters');
             return;
         }
 
         setLoading(true);
         try {
-            await createUserWithEmailAndPassword(auth, email.trim(), password);
+            console.log('🚀 Attempting Firebase createUserWithEmailAndPassword...');
+            const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+            console.log('✅ Firebase signup successful!');
+            console.log('👤 New user ID:', userCredential.user.uid);
+            console.log('📧 New user email:', userCredential.user.email);
+            
             await AsyncStorage.setItem('isGuest', 'false');
+            console.log('💾 Guest status set to false');
+            
+            console.log('🧭 Navigating to tabs...');
             router.push('/(tabs)');
         } catch (error: any) {
+            console.error('❌ Firebase signup error:', error);
+            console.error('🏷️  Error code:', error.code);
+            console.error('📝 Error message:', error.message);
+            
             const errorMessage = error.code === 'auth/email-already-in-use'
                 ? 'An account with this email already exists'
                 : error.code === 'auth/invalid-email'
@@ -63,11 +99,15 @@ export default function AuthScreen() {
             Alert.alert('Signup Error', errorMessage);
         } finally {
             setLoading(false);
+            console.log('🏁 Signup attempt finished');
         }
     };
 
     const handleGuest = async () => {
+        console.log('👤 Guest mode selected');
         await AsyncStorage.setItem('isGuest', 'true');
+        console.log('💾 Guest status set to true');
+        console.log('🧭 Navigating to tabs as guest...');
         router.push('/(tabs)');
     };
 

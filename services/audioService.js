@@ -9,25 +9,31 @@ import {
   setDoc,
   query,
   where,
-  orderBy 
+  orderBy,
+  addDoc,
+  serverTimestamp 
 } from 'firebase/firestore';
-import { db } from '../app/firebase/firebaseConfig';
+import { db, handleFirebaseError, logFirebaseOperation } from '../app/firebase/firebaseConfig';
 
 export const audioService = {
   // Fetch all tracks from Firestore
   async getTracks() {
     try {
+      logFirebaseOperation('getTracks', 'Fetching all tracks');
       const tracksCollection = collection(db, 'tracks');
       const tracksQuery = query(tracksCollection, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(tracksQuery);
       
-      return snapshot.docs.map(doc => ({
+      const tracks = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      logFirebaseOperation('getTracks', `Successfully fetched ${tracks.length} tracks`);
+      return tracks;
     } catch (error) {
-      console.error('Error fetching tracks:', error);
-      throw new Error('Failed to fetch tracks');
+      const friendlyMessage = handleFirebaseError(error, 'Fetching tracks');
+      throw new Error(friendlyMessage);
     }
   },
 
@@ -87,6 +93,7 @@ export const audioService = {
   // Add track to user's favorites
   async addToFavorites(userId, trackId) {
     try {
+      logFirebaseOperation('addToFavorites', `Adding track ${trackId} to user ${userId} favorites`);
       const userDoc = doc(db, 'users', userId);
       
       // Check if user document exists, create if not
@@ -97,17 +104,19 @@ export const audioService = {
           createdAt: new Date(),
           updatedAt: new Date()
         });
+        logFirebaseOperation('addToFavorites', 'Created new user document with favorite');
       } else {
         await updateDoc(userDoc, {
           favorites: arrayUnion(trackId),
           updatedAt: new Date()
         });
+        logFirebaseOperation('addToFavorites', 'Updated existing user favorites');
       }
       
       return true;
     } catch (error) {
-      console.error('Error adding to favorites:', error);
-      throw new Error('Failed to add to favorites');
+      const friendlyMessage = handleFirebaseError(error, 'Adding to favorites');
+      throw new Error(friendlyMessage);
     }
   },
 
@@ -207,6 +216,102 @@ export const audioService = {
     } catch (error) {
       console.error('Error searching tracks:', error);
       throw new Error('Failed to search tracks');
+    }
+  },
+
+  // Initialize sample tracks (for testing)
+  async initializeSampleTracks() {
+    try {
+      console.log('🎵 Checking if sample tracks need to be added...');
+      
+      // Check if tracks collection already has data
+      const tracksCollection = collection(db, 'tracks');
+      const snapshot = await getDocs(tracksCollection);
+      
+      if (snapshot.size > 0) {
+        console.log(`📊 Tracks collection already has ${snapshot.size} tracks. Skipping initialization.`);
+        return false;
+      }
+
+      console.log('🚀 Adding sample tracks to Firestore...');
+      
+      const sampleTracks = [
+        {
+          title: 'Deep Sleep Journey',
+          duration: '30 min',
+          description: 'Drift into restorative sleep naturally with guided relaxation',
+          category: 'SLEEP',
+          isFree: true,
+          audioUrl: '', // Would be populated with actual audio file URLs
+          imageUrl: '', // Would be populated with track cover images
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          title: 'Pain Release Protocol',
+          duration: '35 min',
+          description: 'Advanced techniques for chronic pain management and relief',
+          category: 'PAIN',
+          isFree: false,
+          audioUrl: '',
+          imageUrl: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          title: 'Mindful Relief',
+          duration: '15 min',
+          description: 'Guided meditation to ease chronic pain and tension',
+          category: 'PAIN',
+          isFree: true,
+          audioUrl: '',
+          imageUrl: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          title: 'Evening Calm',
+          duration: '20 min',
+          description: 'Relaxing sounds to unwind after a difficult day',
+          category: 'ANXIETY',
+          isFree: false,
+          audioUrl: '',
+          imageUrl: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          title: 'Quick Anxiety Relief',
+          duration: '10 min',
+          description: 'Fast-acting techniques for immediate anxiety relief',
+          category: 'ANXIETY',
+          isFree: true,
+          audioUrl: '',
+          imageUrl: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          title: 'Restful Nights',
+          duration: '45 min',
+          description: 'Extended sleep hypnosis for deep, restful sleep',
+          category: 'SLEEP',
+          isFree: false,
+          audioUrl: '',
+          imageUrl: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }
+      ];
+
+      const promises = sampleTracks.map(track => addDoc(tracksCollection, track));
+      await Promise.all(promises);
+      
+      console.log(`✅ Successfully added ${sampleTracks.length} sample tracks to Firestore!`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error initializing sample tracks:', error);
+      throw new Error('Failed to initialize sample tracks');
     }
   }
 };
