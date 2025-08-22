@@ -219,99 +219,19 @@ export const audioService = {
     }
   },
 
-  // Initialize sample tracks (for testing)
+  // Initialize sample tracks (enhanced version)
   async initializeSampleTracks() {
     try {
-      console.log('🎵 Checking if sample tracks need to be added...');
+      logFirebaseOperation('initializeSampleTracks', 'Using enhanced seed data service');
       
-      // Check if tracks collection already has data
-      const tracksCollection = collection(db, 'tracks');
-      const snapshot = await getDocs(tracksCollection);
+      // Use the new seedDataService for better data structure
+      const { seedDataService } = await import('./seedData');
+      const addedCount = await seedDataService.initializeSampleTracks();
       
-      if (snapshot.size > 0) {
-        console.log(`📊 Tracks collection already has ${snapshot.size} tracks. Skipping initialization.`);
-        return false;
-      }
-
-      console.log('🚀 Adding sample tracks to Firestore...');
-      
-      const sampleTracks = [
-        {
-          title: 'Deep Sleep Journey',
-          duration: '30 min',
-          description: 'Drift into restorative sleep naturally with guided relaxation',
-          category: 'SLEEP',
-          isFree: true,
-          audioUrl: '', // Would be populated with actual audio file URLs
-          imageUrl: '', // Would be populated with track cover images
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        },
-        {
-          title: 'Pain Release Protocol',
-          duration: '35 min',
-          description: 'Advanced techniques for chronic pain management and relief',
-          category: 'PAIN',
-          isFree: false,
-          audioUrl: '',
-          imageUrl: '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        },
-        {
-          title: 'Mindful Relief',
-          duration: '15 min',
-          description: 'Guided meditation to ease chronic pain and tension',
-          category: 'PAIN',
-          isFree: true,
-          audioUrl: '',
-          imageUrl: '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        },
-        {
-          title: 'Evening Calm',
-          duration: '20 min',
-          description: 'Relaxing sounds to unwind after a difficult day',
-          category: 'ANXIETY',
-          isFree: false,
-          audioUrl: '',
-          imageUrl: '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        },
-        {
-          title: 'Quick Anxiety Relief',
-          duration: '10 min',
-          description: 'Fast-acting techniques for immediate anxiety relief',
-          category: 'ANXIETY',
-          isFree: true,
-          audioUrl: '',
-          imageUrl: '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        },
-        {
-          title: 'Restful Nights',
-          duration: '45 min',
-          description: 'Extended sleep hypnosis for deep, restful sleep',
-          category: 'SLEEP',
-          isFree: false,
-          audioUrl: '',
-          imageUrl: '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }
-      ];
-
-      const promises = sampleTracks.map(track => addDoc(tracksCollection, track));
-      await Promise.all(promises);
-      
-      console.log(`✅ Successfully added ${sampleTracks.length} sample tracks to Firestore!`);
-      return true;
+      return addedCount > 0;
     } catch (error) {
-      console.error('❌ Error initializing sample tracks:', error);
-      throw new Error('Failed to initialize sample tracks');
+      const friendlyMessage = handleFirebaseError(error, 'Initializing sample tracks');
+      throw new Error(friendlyMessage);
     }
   }
 };

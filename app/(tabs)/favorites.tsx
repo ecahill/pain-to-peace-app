@@ -6,15 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
 import { audioService } from '../../services/audioService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../contexts/AuthContext';
+import { LoadingState, EmptyState } from '../../components/LoadingStates';
 
 interface FavoriteTrack {
   id: string;
@@ -41,35 +39,25 @@ const getCategoryColor = (category: FavoriteTrack['category']) => {
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<FavoriteTrack[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [isGuest, setIsGuest] = useState(false);
+
+  // Use the enhanced auth context
+  const { 
+    user, 
+    isGuest, 
+    isOnline, 
+    initializing 
+  } = useAuth();
 
   useEffect(() => {
-    const checkUserAndLoadFavorites = async () => {
-      try {
-        // Check guest status
-        const guestStatus = await AsyncStorage.getItem('isGuest');
-        setIsGuest(guestStatus === 'true');
-      } catch (error) {
-        console.error('Error checking user status:', error);
-      }
-    };
-
-    checkUserAndLoadFavorites();
-
-    // Listen to auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
+    if (!initializing) {
       if (user && !isGuest) {
-        await loadUserFavorites(user.uid);
+        loadUserFavorites(user.uid);
       } else {
         setFavorites([]);
+        setLoading(false);
       }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [isGuest]);
+    }
+  }, [initializing, user, isGuest]);
 
   const loadUserFavorites = async (userId: string) => {
     try {
@@ -103,13 +91,13 @@ export default function FavoritesScreen() {
     router.push('/player');
   };
 
-  if (loading) {
+  if (initializing || loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Loading favorites...</Text>
-        </View>
+        <LoadingState 
+          text="Loading your favorites..."
+          style={styles.centerContent}
+        />
       </SafeAreaView>
     );
   }
@@ -121,21 +109,13 @@ export default function FavoritesScreen() {
           <View style={styles.header}>
             <Text style={styles.headerTitle}>My Favorites</Text>
           </View>
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <IconSymbol name="person.crop.circle" size={48} color="#D1D5DB" />
-            </View>
-            <Text style={styles.emptyTitle}>Login Required</Text>
-            <Text style={styles.emptySubtitle}>
-              Please log in to save and view your favorite tracks
-            </Text>
-            <TouchableOpacity 
-              style={styles.browseButton}
-              onPress={() => router.push('/auth/login')}
-            >
-              <Text style={styles.browseButtonText}>Login</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="person.crop.circle"
+            title="Login Required"
+            subtitle="Please log in to save and view your favorite tracks"
+            actionText="Login"
+            onAction={() => router.push('/auth/login')}
+          />
         </ScrollView>
       </SafeAreaView>
     );
@@ -179,21 +159,13 @@ export default function FavoritesScreen() {
           </View>
         ) : (
           /* Empty State */
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <IconSymbol name="heart" size={48} color="#D1D5DB" />
-            </View>
-            <Text style={styles.emptyTitle}>No favorites yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Save tracks you love by tapping the heart icon while listening
-            </Text>
-            <TouchableOpacity 
-              style={styles.browseButton}
-              onPress={() => router.push('/(tabs)')}
-            >
-              <Text style={styles.browseButtonText}>Explore tracks</Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            icon="heart"
+            title="No favorites yet"
+            subtitle="Save tracks you love by tapping the heart icon while listening"
+            actionText="Explore tracks"
+            onAction={() => router.push('/(tabs)')}
+          />
         )}
       </ScrollView>
     </SafeAreaView>
@@ -327,5 +299,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6B7280',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -7,16 +7,20 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
-  ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
 import { audioService } from '../../services/audioService';
+import { useAuth } from '../../contexts/AuthContext';
+import { 
+  LoadingState, 
+  ErrorState, 
+  OfflineState, 
+  ConnectionBanner 
+} from '../../components/LoadingStates';
 
 interface Track {
   id: string;
@@ -93,69 +97,97 @@ export default function LibraryScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isGuest, setIsGuest] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Check if user is authenticated and load tracks
+  // Use the enhanced auth context
+  const { 
+    user, 
+    isGuest, 
+    isOnline, 
+    authError, 
+    hasConnectionIssues,
+    initializing 
+  } = useAuth();
+
+  // Load tracks and user data
   useEffect(() => {
-    const checkUserAndLoadTracks = async () => {
-      try {
-        // Check guest status
-        const guestStatus = await AsyncStorage.getItem('isGuest');
-        setIsGuest(guestStatus === 'true');
+    if (!initializing) {
+      loadInitialData();
+    }
+  }, [initializing, user, isGuest]);
 
-        // Load tracks from Firebase
-        await loadTracks();
-      } catch (error) {
-        console.error('Error during initialization:', error);
-        // Use fallback tracks if Firebase fails
-        setTracks(fallbackTracks);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Load user favorites when user changes
+  useEffect(() => {
+    if (user && !isGuest) {
+      loadUserFavorites(user.uid);
+    } else {
+      setFavorites([]);
+    }
+  }, [user, isGuest]);
 
-    checkUserAndLoadTracks();
-
-    // Listen to auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user && !isGuest) {
-        // Load user favorites
-        await loadUserFavorites(user.uid);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const loadInitialData = async () => {
+    try {
+      setError(null);
+      await loadTracks();
+    } catch (error) {
+      console.error('Error during initialization:', error);
+      setError(error.message || 'Failed to load content');
+      // Use fallback tracks if Firebase fails
+      setTracks(fallbackTracks);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadTracks = async () => {
     try {
-      console.log('📚 Loading tracks from Firebase...');
-      
+      // Don't try to load if offline
+      if (!isOnline) {
+        throw new Error('No internet connection');
+      }
+
       // First, try to initialize sample tracks if collection is empty
       await audioService.initializeSampleTracks();
       
       // Then fetch all tracks
       const tracksData = await audioService.getTracks();
-      console.log(`📊 Loaded ${tracksData.length} tracks from Firebase`);
-      
       setTracks(tracksData.length > 0 ? tracksData : fallbackTracks);
     } catch (error) {
-      console.error('❌ Error loading tracks:', error);
-      console.log('🔄 Using fallback tracks instead');
-      setTracks(fallbackTracks);
+      console.error('Error loading tracks:', error);
+      throw error; // Let the caller handle the error
     }
   };
 
   const loadUserFavorites = async (userId: string) => {
     try {
+      if (!isOnline) {
+        console.warn('Skipping favorites load - offline');
+        return;
+      }
+      
       const userFavorites = await audioService.getUserFavorites(userId);
       setFavorites(userFavorites.map(track => track.id));
     } catch (error) {
       console.error('Error loading user favorites:', error);
+      // Don't show error for favorites - it's not critical
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      setError(null);
+      await loadTracks();
+      if (user && !isGuest) {
+        await loadUserFavorites(user.uid);
+      }
+    } catch (error) {
+      setError(error.message || 'Failed to refresh content');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -198,17 +230,53 @@ export default function LibraryScreen() {
     return matchesCategory && matchesSearch; // Show all tracks, but style premium ones differently for guests
   });
 
-  if (loading) {
+  // Show loading state while initializing
+  if (initializing || loading) {
     return (
       <LinearGradient
         colors={['#E0F2FE', '#F0F9FF']}
         style={styles.container}
       >
         <SafeAreaView style={styles.safeArea}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
-            <Text style={styles.loadingText}>Loading tracks...</Text>
-          </View>
+          <LoadingState 
+            text="Loading your hypnosis library..."
+            style={styles.centerContent}
+          />
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+
+  // Show offline state if no connection and no cached data
+  if (!isOnline && tracks.length === 0) {
+    return (
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF']}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <OfflineState 
+            onRetry={handleRefresh}
+            style={styles.centerContent}
+          />
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
+
+  // Show error state if there's a critical error
+  if (error && tracks.length === 0) {
+    return (
+      <LinearGradient
+        colors={['#E0F2FE', '#F0F9FF']}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <ErrorState 
+            error={error}
+            onRetry={handleRefresh}
+            style={styles.centerContent}
+          />
         </SafeAreaView>
       </LinearGradient>
     );
@@ -220,7 +288,25 @@ export default function LibraryScreen() {
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Connection status banner */}
+        <ConnectionBanner 
+          isOnline={isOnline}
+          hasError={!!authError || !!error}
+          onRetry={handleRefresh}
+        />
+        
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={['#3B82F6']}
+              tintColor="#3B82F6"
+            />
+          }
+        >
           {/* Header */}
           <View style={styles.header}>
             <View>
@@ -529,5 +615,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#6B7280',
+  },
+  centerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
