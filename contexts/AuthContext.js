@@ -4,7 +4,14 @@ import { auth, handleFirebaseError, logFirebaseOperation, isNetworkError } from 
 import { userService } from '../services/userService';
 import { seedDataService } from '../services/seedData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
+
+// Safely import NetInfo with fallback
+let NetInfo = null;
+try {
+  NetInfo = require('@react-native-community/netinfo').default;
+} catch (error) {
+  console.warn('NetInfo not available, using fallback network detection');
+}
 
 const AuthContext = createContext({});
 
@@ -31,15 +38,20 @@ export const AuthProvider = ({ children }) => {
         logFirebaseOperation('AuthProvider', 'Initializing authentication');
         
         // Check network connectivity
-        const netInfo = await NetInfo.fetch();
-        setIsOnline(netInfo.isConnected);
+        if (NetInfo) {
+          const netInfo = await NetInfo.fetch();
+          setIsOnline(netInfo.isConnected);
+        } else {
+          // Fallback: assume online if NetInfo not available
+          setIsOnline(true);
+        }
         
         // Check guest status
         const guestStatus = await AsyncStorage.getItem('isGuest');
         setIsGuest(guestStatus === 'true');
         
         // Initialize sample data if needed (only when online)
-        if (netInfo.isConnected) {
+        if (NetInfo ? netInfo.isConnected : true) {
           try {
             await seedDataService.initializeAllSampleData();
           } catch (error) {
@@ -47,7 +59,8 @@ export const AuthProvider = ({ children }) => {
           }
         }
         
-        logFirebaseOperation('AuthProvider', `Initialization complete - Guest: ${guestStatus === 'true'}, Online: ${netInfo.isConnected}`);
+        const isOnlineStatus = NetInfo ? netInfo.isConnected : true;
+        logFirebaseOperation('AuthProvider', `Initialization complete - Guest: ${guestStatus === 'true'}, Online: ${isOnlineStatus}`);
       } catch (error) {
         const friendlyMessage = handleFirebaseError(error, 'Initializing authentication');
         setAuthError(friendlyMessage);
@@ -58,15 +71,18 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
 
     // Listen to network state changes
-    const unsubscribeNetInfo = NetInfo.addEventListener(state => {
-      logFirebaseOperation('NetworkState', `Connection: ${state.isConnected}`);
-      setIsOnline(state.isConnected);
-      
-      if (state.isConnected && authError && isNetworkError(authError)) {
-        // Clear network-related errors when back online
-        setAuthError(null);
-      }
-    });
+    let unsubscribeNetInfo = null;
+    if (NetInfo) {
+      unsubscribeNetInfo = NetInfo.addEventListener(state => {
+        logFirebaseOperation('NetworkState', `Connection: ${state.isConnected}`);
+        setIsOnline(state.isConnected);
+        
+        if (state.isConnected && authError && isNetworkError(authError)) {
+          // Clear network-related errors when back online
+          setAuthError(null);
+        }
+      });
+    }
 
     // Listen to authentication state changes
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
