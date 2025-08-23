@@ -1,25 +1,141 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { initializeApp, FirebaseApp, FirebaseOptions } from "firebase/app";
+import { getAuth, connectAuthEmulator, Auth } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator, Firestore } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator, FirebaseStorage } from 'firebase/storage';
 
-const firebaseConfig = {
-    apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyDq3dtLqGpzP1MKqmYEQv5K9F53q4ehgJ0",
-    authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "pain-to-peace.firebaseapp.com",
-    projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "pain-to-peace",
-    storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "pain-to-peace.firebasestorage.app",
-    messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "803224433859",
-    appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:803224433859:web:c84fa64ccf8f0068201e76",
-    measurementId: "G-5KMV63PFYL"
+// =============================================================================
+// ENVIRONMENT VARIABLE VALIDATION
+// =============================================================================
+
+interface RequiredEnvVars {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+}
+
+/**
+ * Validates that all required environment variables are present
+ * @throws {Error} If any required environment variable is missing
+ */
+const validateEnvironmentVariables = (): RequiredEnvVars => {
+  const requiredVars: Array<keyof RequiredEnvVars> = [
+    'apiKey',
+    'authDomain', 
+    'projectId',
+    'storageBucket',
+    'messagingSenderId',
+    'appId'
+  ];
+
+  const envVarMap = {
+    apiKey: 'EXPO_PUBLIC_FIREBASE_API_KEY',
+    authDomain: 'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
+    projectId: 'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
+    storageBucket: 'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
+    messagingSenderId: 'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+    appId: 'EXPO_PUBLIC_FIREBASE_APP_ID'
+  };
+
+  const missingVars: string[] = [];
+  const config: Partial<RequiredEnvVars> = {};
+
+  // Check each required environment variable
+  for (const key of requiredVars) {
+    const envVar = envVarMap[key];
+    const value = process.env[envVar];
+    
+    if (!value || value.trim() === '') {
+      missingVars.push(envVar);
+    } else {
+      config[key] = value.trim();
+    }
+  }
+
+  // Throw detailed error if any variables are missing
+  if (missingVars.length > 0) {
+    const errorMessage = [
+      '🚨 Firebase Configuration Error: Missing required environment variables',
+      '',
+      'Missing variables:',
+      ...missingVars.map(varName => `  ❌ ${varName}`),
+      '',
+      'To fix this:',
+      '1. Check your .env file in the project root',
+      '2. Ensure all EXPO_PUBLIC_FIREBASE_* variables are set',
+      '3. Get these values from Firebase Console > Project Settings > General',
+      '4. Restart your development server after updating .env',
+      '',
+      'Required .env format:',
+      'EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key_here',
+      'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com',
+      'EXPO_PUBLIC_FIREBASE_PROJECT_ID=your_project_id',
+      'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com',
+      'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789',
+      'EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef123456',
+    ].join('\n');
+
+    throw new Error(errorMessage);
+  }
+
+  return config as RequiredEnvVars;
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+/**
+ * Create Firebase configuration from validated environment variables
+ */
+const createFirebaseConfig = (): FirebaseOptions => {
+  console.log('🔧 Loading Firebase configuration from environment variables...');
+  
+  const envConfig = validateEnvironmentVariables();
+  
+  const firebaseConfig: FirebaseOptions = {
+    apiKey: envConfig.apiKey,
+    authDomain: envConfig.authDomain,
+    projectId: envConfig.projectId,
+    storageBucket: envConfig.storageBucket,
+    messagingSenderId: envConfig.messagingSenderId,
+    appId: envConfig.appId,
+  };
 
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+  console.log('✅ Firebase configuration loaded successfully');
+  console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
+  console.log(`🔐 Auth Domain: ${firebaseConfig.authDomain}`);
+  
+  return firebaseConfig;
+};
+
+// =============================================================================
+// FIREBASE INITIALIZATION
+// =============================================================================
+
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
+
+try {
+  // Create and validate configuration
+  const firebaseConfig = createFirebaseConfig();
+  
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
+  
+  // Initialize Firebase services
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  
+  console.log('🔥 Firebase services initialized successfully');
+} catch (error) {
+  console.error('💥 Firebase initialization failed:', error);
+  throw error; // Re-throw to prevent app from starting with broken Firebase
+}
+
+// Export initialized services
+export { auth, db, storage };
 
 // =============================================================================
 // DEVELOPMENT EMULATOR CONFIGURATION
@@ -75,7 +191,7 @@ const connectToEmulators = () => {
     console.log('🚀 To start emulators, run: firebase emulators:start');
     
   } catch (error) {
-    console.warn('⚠️ Failed to connect to Firebase emulators:', error.message);
+    console.warn('⚠️ Failed to connect to Firebase emulators:', (error as Error).message);
     console.warn('   Using production Firebase instead');
     console.warn('   To use emulators, run: firebase emulators:start');
   }
@@ -249,32 +365,14 @@ export const logFirebaseOperation = (operation: string, details?: any) => {
 };
 
 // =============================================================================
-// CONFIGURATION VALIDATION
+// CONFIGURATION VALIDATION (LEGACY SUPPORT)
 // =============================================================================
 
 /**
- * Validate Firebase configuration
+ * Legacy validation function - kept for backward compatibility
+ * The actual validation now happens during initialization above
  */
 export const validateFirebaseConfig = () => {
-  const requiredFields = [
-    'apiKey', 'authDomain', 'projectId', 'storageBucket', 
-    'messagingSenderId', 'appId'
-  ];
-  
-  const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
-  
-  if (missingFields.length > 0) {
-    console.error('❌ Missing Firebase config fields:', missingFields);
-    throw new Error(`Firebase configuration incomplete. Missing: ${missingFields.join(', ')}`);
-  }
-  
-  console.log('✅ Firebase configuration validated');
+  console.log('✅ Firebase configuration validated (environment variables loaded)');
   return true;
 };
-
-// Validate configuration on import
-try {
-  validateFirebaseConfig();
-} catch (error) {
-  console.error('🚨 Firebase configuration error:', error);
-}
