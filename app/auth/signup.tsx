@@ -2,7 +2,7 @@
 import { router } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth } from '../../config/firebaseConfig';
 
 const Signup = () => {
@@ -13,7 +13,7 @@ const Signup = () => {
         try {
             await createUserWithEmailAndPassword(auth, email, password);
             Alert.alert('Success', 'Account created!');
-            router.replace('/library'); // Redirect to main app screen
+            router.replace('/(tabs)'); // Redirect to main app screen
         } catch (error: any) {
             Alert.alert('Error', error.message);
         }
@@ -37,6 +37,10 @@ const Signup = () => {
                 value={password}
             />
             <Button title="Sign Up" onPress={handleSignup} />
+            
+            <TouchableOpacity onPress={() => router.push('/auth/login')}>
+                <Text style={styles.link}>Already have an account? Log in</Text>
+            </TouchableOpacity>
         </View>
     );
 };
@@ -60,5 +64,11 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         marginBottom: 16,
         fontSize: 16,
+    },
+    link: {
+        color: '#3f7be6',
+        marginTop: 20,
+        fontSize: 14,
+        textAlign: 'center',
     },
 });

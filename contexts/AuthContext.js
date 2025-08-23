@@ -38,9 +38,16 @@ export const AuthProvider = ({ children }) => {
         logFirebaseOperation('AuthProvider', 'Initializing authentication');
         
         // Check network connectivity
+        let networkConnected = true; // Default to true if NetInfo unavailable
         if (NetInfo) {
-          const netInfo = await NetInfo.fetch();
-          setIsOnline(netInfo.isConnected);
+          try {
+            const netInfo = await NetInfo.fetch();
+            networkConnected = netInfo.isConnected;
+            setIsOnline(networkConnected);
+          } catch (error) {
+            console.warn('NetInfo fetch failed:', error);
+            setIsOnline(true);
+          }
         } else {
           // Fallback: assume online if NetInfo not available
           setIsOnline(true);
@@ -50,17 +57,10 @@ export const AuthProvider = ({ children }) => {
         const guestStatus = await AsyncStorage.getItem('isGuest');
         setIsGuest(guestStatus === 'true');
         
-        // Initialize sample data if needed (only when online)
-        if (NetInfo ? netInfo.isConnected : true) {
-          try {
-            await seedDataService.initializeAllSampleData();
-          } catch (error) {
-            console.warn('Could not initialize sample data:', error);
-          }
-        }
+        // Note: Sample data initialization moved to after user authentication
+        // to prevent PERMISSION_DENIED errors on app startup
         
-        const isOnlineStatus = NetInfo ? netInfo.isConnected : true;
-        logFirebaseOperation('AuthProvider', `Initialization complete - Guest: ${guestStatus === 'true'}, Online: ${isOnlineStatus}`);
+        logFirebaseOperation('AuthProvider', `Initialization complete - Guest: ${guestStatus === 'true'}, Online: ${networkConnected}`);
       } catch (error) {
         const friendlyMessage = handleFirebaseError(error, 'Initializing authentication');
         setAuthError(friendlyMessage);
@@ -94,6 +94,16 @@ export const AuthProvider = ({ children }) => {
         if (user && !isGuest) {
           // User is authenticated, load their profile
           await loadUserProfile(user.uid);
+          
+          // Initialize sample data for new authenticated users (only once)
+          if (isOnline) {
+            try {
+              await seedDataService.initializeAllSampleData();
+              logFirebaseOperation('SampleData', 'Sample data initialized for authenticated user');
+            } catch (error) {
+              console.warn('Could not initialize sample data:', error);
+            }
+          }
         } else {
           // User is not authenticated or is guest
           setUserProfile(null);
@@ -111,7 +121,9 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       unsubscribeAuth();
-      unsubscribeNetInfo();
+      if (unsubscribeNetInfo) {
+        unsubscribeNetInfo();
+      }
     };
   }, [isGuest]);
 

@@ -12,13 +12,13 @@ const WelcomeScreen = () => {
             <Text style={styles.subtitle}>Your mind-body companion for pain relief.</Text>
             <TouchableOpacity
                 style={styles.button}
-                onPress={() => router.push('/auth')}>
+                onPress={() => router.push('/auth/signup')}>
                 <Text style={styles.buttonText}>Sign Up</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
                 style={[styles.button, styles.secondaryButton]}
-                onPress={() => router.push('/login')}>
+                onPress={() => router.push('/auth/login')}>
                 <Text style={styles.secondaryButtonText}>Log In</Text>
             </TouchableOpacity>
 
