@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, View, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
+import { auth } from '../../config/firebaseConfig';
 
 export default function AuthScreen() {
     const router = useRouter();

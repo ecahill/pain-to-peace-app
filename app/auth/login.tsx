@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
+import { auth } from '../../config/firebaseConfig';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
