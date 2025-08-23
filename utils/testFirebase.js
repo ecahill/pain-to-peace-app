@@ -1,5 +1,5 @@
 // Firebase connection test utility
-import { db, auth, storage } from '../app/firebase/firebaseConfig';
+import { db, auth, storage } from '../config/firebaseConfig';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 
 /**

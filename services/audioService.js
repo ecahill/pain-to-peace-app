@@ -13,7 +13,7 @@ import {
   addDoc,
   serverTimestamp 
 } from 'firebase/firestore';
-import { db, handleFirebaseError, logFirebaseOperation } from '../app/firebase/firebaseConfig';
+import { db, handleFirebaseError, logFirebaseOperation } from '../config/firebaseConfig';
 
 export const audioService = {
   // Fetch all tracks from Firestore

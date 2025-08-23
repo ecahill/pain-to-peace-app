@@ -6,7 +6,7 @@ import {
   increment,
   serverTimestamp 
 } from 'firebase/firestore';
-import { db } from '../app/firebase/firebaseConfig';
+import { db } from '../config/firebaseConfig';
 
 export const userService = {
   // Create user profile after signup

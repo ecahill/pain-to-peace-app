@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut, getAuth } from 'firebase/auth';
-import { auth, handleFirebaseError, logFirebaseOperation, isNetworkError } from '../app/firebase/firebaseConfig';
+import { auth, handleFirebaseError, logFirebaseOperation, isNetworkError } from '../config/firebaseConfig';
 import { userService } from '../services/userService';
 import { seedDataService } from '../services/seedData';
 import AsyncStorage from '@react-native-async-storage/async-storage';

@@ -7,7 +7,7 @@ import {
   serverTimestamp,
   writeBatch 
 } from 'firebase/firestore';
-import { db, handleFirebaseError, logFirebaseOperation } from '../app/firebase/firebaseConfig';
+import { db, handleFirebaseError, logFirebaseOperation } from '../config/firebaseConfig';
 
 // =============================================================================
 // DATA STRUCTURE DEFINITIONS
