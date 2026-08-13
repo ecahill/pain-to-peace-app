@@ -4,7 +4,7 @@ A mind-body companion app for chronic pain relief. Pain to Peace offers a librar
 
 Built with [Expo](https://expo.dev) and React Native, it runs on iOS, Android, and the web from a single codebase, backed by Firebase for auth, data, and media storage.
 
-> **Status:** Work in progress. The core navigation, authentication, track library, favorites, and offline caching are implemented. The player screen is currently a UI shell — audio playback is not yet wired up — and some profile statistics are still placeholders.
+> **Status:** Work in progress. The core navigation, authentication, track library, favorites, and offline caching are implemented. The player screen is currently a UI shell, audio playback is not yet wired up, and some profile statistics are still placeholders.
 
 ## Features
 
