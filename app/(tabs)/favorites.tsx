@@ -88,7 +88,7 @@ export default function FavoritesScreen() {
   };
 
   const handleTrackPress = (track: FavoriteTrack) => {
-    router.push('/player');
+    router.push({ pathname: '/player', params: { id: track.id } });
   };
 
   if (initializing || loading) {

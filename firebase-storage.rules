@@ -1,10 +1,21 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
+// Storage rules for Pain to Peace.
+//
+// Track audio is publicly readable so that guest mode (which has no auth token)
+// can stream free sessions. Premium enforcement happens in the client and in
+// Firestore, not here -- anyone who obtains a track URL can stream it.
+// Tighten this to `request.auth != null` if guest playback is ever dropped.
 service firebase.storage {
   match /b/{bucket}/o {
+    // Guided session audio and cover art: world readable, no client writes.
+    // Content is uploaded out of band (Firebase Console, CI, or admin SDK).
+    match /tracks/{trackId}/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Everything else stays denied by default.
     match /{allPaths=**} {
       allow read, write: if false;
     }

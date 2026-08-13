@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,30 +6,129 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Slider from '@react-native-community/slider';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { audioService } from '../services/audioService';
+import { LoadingState, ErrorState } from '../components/LoadingStates';
 
 const { width } = Dimensions.get('window');
 
+interface Track {
+  id: string;
+  title: string;
+  description: string;
+  audioUrl?: string;
+}
+
 export default function PlayerScreen() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(5 * 60 + 23); // 5:23 in seconds
-  const [totalTime] = useState(15 * 60); // 15:00 in seconds
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [track, setTrack] = useState<Track | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // While the user drags the slider we stop following status updates, otherwise
+  // the ~500ms ticks fight the drag and the thumb snaps back under their finger.
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekPosition, setSeekPosition] = useState(0);
+
+  // useAudioPlayer re-creates the player when the source changes, so passing
+  // null until the download URL resolves is safe.
+  const player = useAudioPlayer(sourceUrl);
+  const status = useAudioPlayerStatus(player);
+
+  const loadTrack = useCallback(async () => {
+    if (!id) {
+      setError('No session was selected.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // audioService is untyped JS, so the Firestore payload arrives loosely typed.
+      const trackData = (await audioService.getTrackById(id)) as Track;
+      setTrack(trackData);
+
+      const url = await audioService.resolveAudioUrl(trackData.audioUrl);
+      setSourceUrl(url);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load this session.');
+      setSourceUrl(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadTrack();
+  }, [loadTrack]);
 
   const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return '0:00';
+    }
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progress = (currentTime / totalTime) * 100;
+  const duration = Number.isFinite(status.duration) ? status.duration : 0;
+  const currentTime = isSeeking ? seekPosition : status.currentTime ?? 0;
+  const isReady = status.isLoaded && duration > 0;
 
   const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
+    if (!isReady) return;
+
+    if (status.playing) {
+      player.pause();
+    } else {
+      // Restart from the top instead of sitting at the end doing nothing.
+      if (status.didJustFinish) {
+        player.seekTo(0);
+      }
+      player.play();
+    }
   };
 
+  const handleSeekComplete = async (value: number) => {
+    try {
+      await player.seekTo(value);
+    } catch (err) {
+      console.error('Error seeking:', err);
+    } finally {
+      setIsSeeking(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LoadingState text="Loading session..." style={styles.centerContent} />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <IconSymbol name="chevron.left" size={24} color="#1F2937" />
+          </TouchableOpacity>
+        </View>
+        <ErrorState error={error} onRetry={loadTrack} style={styles.centerContent} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -60,7 +159,6 @@ export default function PlayerScreen() {
                     styles.waveLine,
                     {
                       height: Math.random() * 60 + 20,
-                      animationDelay: `${i * 0.1}s`,
                     },
                   ]}
                 />
@@ -72,29 +170,47 @@ export default function PlayerScreen() {
 
       {/* Session Info */}
       <View style={styles.sessionInfo}>
-        <Text style={styles.sessionTitle}>Mindful Relief</Text>
-        <Text style={styles.sessionDescription}>Guided meditation to ease chronic pain and tension</Text>
+        <Text style={styles.sessionTitle}>{track?.title ?? 'Session'}</Text>
+        <Text style={styles.sessionDescription}>{track?.description ?? ''}</Text>
       </View>
 
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
-        </View>
+        <Slider
+          style={styles.slider}
+          minimumValue={0}
+          maximumValue={duration || 1}
+          value={currentTime}
+          minimumTrackTintColor="#3B82F6"
+          maximumTrackTintColor="#E5E7EB"
+          thumbTintColor="#3B82F6"
+          disabled={!isReady}
+          onSlidingStart={() => setIsSeeking(true)}
+          onValueChange={setSeekPosition}
+          onSlidingComplete={handleSeekComplete}
+        />
         <View style={styles.timeContainer}>
           <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-          <Text style={styles.timeText}>{formatTime(totalTime)}</Text>
+          <Text style={styles.timeText}>{formatTime(duration)}</Text>
         </View>
       </View>
 
       {/* Media Controls */}
       <View style={styles.controlsContainer}>
-        <TouchableOpacity style={styles.playButton} onPress={handlePlayPause}>
-          <IconSymbol 
-            name={isPlaying ? "pause.fill" : "play.fill"} 
-            size={32} 
-            color="#FFFFFF" 
-          />
+        <TouchableOpacity
+          style={[styles.playButton, !isReady && styles.playButtonDisabled]}
+          onPress={handlePlayPause}
+          disabled={!isReady}
+        >
+          {!isReady || status.isBuffering ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <IconSymbol
+              name={status.playing ? 'pause.fill' : 'play.fill'}
+              size={32}
+              color="#FFFFFF"
+            />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -123,6 +239,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  centerContent: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -206,16 +325,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 40,
   },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
-    marginBottom: 12,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 2,
+  slider: {
+    width: '100%',
+    height: 40,
   },
   timeContainer: {
     flexDirection: 'row',
@@ -243,6 +355,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 8,
+  },
+  playButtonDisabled: {
+    backgroundColor: '#93C5FD',
   },
   bottomNav: {
     flexDirection: 'row',

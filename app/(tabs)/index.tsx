@@ -198,7 +198,7 @@ export default function LibraryScreen() {
       console.log('Premium track - show upgrade prompt');
       return;
     }
-    router.push('/player');
+    router.push({ pathname: '/player', params: { id: track.id } });
   };
 
   const toggleFavorite = async (trackId: string) => {

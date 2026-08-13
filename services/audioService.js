@@ -13,7 +13,8 @@ import {
   addDoc,
   serverTimestamp 
 } from 'firebase/firestore';
-import { db, handleFirebaseError, logFirebaseOperation } from '../config/firebaseConfig';
+import { getDownloadURL, ref } from 'firebase/storage';
+import { db, storage, handleFirebaseError, logFirebaseOperation } from '../config/firebaseConfig';
 
 export const audioService = {
   // Fetch all tracks from Firestore
@@ -55,6 +56,49 @@ export const audioService = {
     } catch (error) {
       console.error('Error fetching tracks by category:', error);
       throw new Error('Failed to fetch tracks by category');
+    }
+  },
+
+  // Fetch a single track by its document ID
+  async getTrackById(trackId) {
+    try {
+      logFirebaseOperation('getTrackById', `Fetching track ${trackId}`);
+      const trackDoc = doc(db, 'tracks', trackId);
+      const snapshot = await getDoc(trackDoc);
+
+      if (!snapshot.exists()) {
+        throw new Error('This session is no longer available.');
+      }
+
+      return { id: snapshot.id, ...snapshot.data() };
+    } catch (error) {
+      const friendlyMessage = handleFirebaseError(error, 'Fetching track');
+      throw new Error(friendlyMessage);
+    }
+  },
+
+  // Resolve a stored audioUrl into a URL an audio player can actually stream.
+  // Tracks are seeded with gs:// URIs, which no player accepts, so those are
+  // exchanged for tokenized HTTPS download URLs. Values that are already HTTPS
+  // are passed straight through, so this is safe to call on any track.
+  async resolveAudioUrl(audioUrl) {
+    if (!audioUrl) {
+      throw new Error('This session has no audio file attached yet.');
+    }
+
+    if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
+      return audioUrl;
+    }
+
+    try {
+      logFirebaseOperation('resolveAudioUrl', `Resolving ${audioUrl}`);
+      // ref() accepts both gs:// URIs and bucket-relative paths.
+      const downloadUrl = await getDownloadURL(ref(storage, audioUrl));
+      logFirebaseOperation('resolveAudioUrl', 'Resolved to download URL');
+      return downloadUrl;
+    } catch (error) {
+      const friendlyMessage = handleFirebaseError(error, 'Loading audio file');
+      throw new Error(friendlyMessage);
     }
   },
 
