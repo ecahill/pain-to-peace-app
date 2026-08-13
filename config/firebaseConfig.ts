@@ -1,7 +1,7 @@
 import { initializeApp, FirebaseApp, FirebaseOptions } from "firebase/app";
-import { getAuth, connectAuthEmulator, Auth } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator, Firestore } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator, FirebaseStorage } from 'firebase/storage';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // =============================================================================
 // ENVIRONMENT VARIABLE VALIDATION
@@ -123,12 +123,16 @@ try {
   // Initialize Firebase
   app = initializeApp(firebaseConfig);
   
-  // Initialize Firebase services
+  // Initialize Firebase services - always connecting to real Firebase
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
   
   console.log('🔥 Firebase services initialized successfully');
+  console.log('🌐 Connected to production Firebase services');
+  console.log('   📧 Auth: Firebase Authentication');
+  console.log('   🗄️  Firestore: Cloud Firestore');
+  console.log('   📁 Storage: Firebase Storage');
 } catch (error) {
   console.error('💥 Firebase initialization failed:', error);
   throw error; // Re-throw to prevent app from starting with broken Firebase
@@ -137,73 +141,6 @@ try {
 // Export initialized services
 export { auth, db, storage };
 
-// =============================================================================
-// DEVELOPMENT EMULATOR CONFIGURATION
-// =============================================================================
-
-/**
- * Check if we're running in development mode
- * Works for both React Native and Expo Web
- */
-const isDevelopment = (): boolean => {
-  // For Expo/React Native
-  if (typeof __DEV__ !== 'undefined') {
-    return __DEV__;
-  }
-  
-  // For web development
-  if (typeof window !== 'undefined') {
-    return window.location.hostname === 'localhost' || 
-           window.location.hostname === '127.0.0.1' ||
-           window.location.hostname.includes('192.168.') ||
-           process.env.NODE_ENV === 'development';
-  }
-  
-  // Fallback for other environments
-  return process.env.NODE_ENV === 'development';
-};
-
-/**
- * Connect to Firebase emulators in development
- */
-const connectToEmulators = () => {
-  try {
-    // Check if emulators are already connected to avoid reconnection errors
-    if ((auth as any)._delegate?.emulator) {
-      console.log('🔧 Firebase emulators already connected');
-      return;
-    }
-
-    // Connect to Authentication emulator
-    connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-    
-    // Connect to Firestore emulator
-    connectFirestoreEmulator(db, 'localhost', 8080);
-    
-    // Connect to Storage emulator (using port 9199 as default)
-    connectStorageEmulator(storage, 'localhost', 9199);
-    
-    console.log('🔧 Successfully connected to Firebase emulators:');
-    console.log('   📧 Auth: http://localhost:9099');
-    console.log('   🗄️  Firestore: localhost:8080');
-    console.log('   📁 Storage: localhost:9199');
-    console.log('');
-    console.log('🚀 To start emulators, run: firebase emulators:start');
-    
-  } catch (error) {
-    console.warn('⚠️ Failed to connect to Firebase emulators:', (error as Error).message);
-    console.warn('   Using production Firebase instead');
-    console.warn('   To use emulators, run: firebase emulators:start');
-  }
-};
-
-// Automatically connect to emulators in development
-if (isDevelopment()) {
-  console.log('🛠️ Development mode detected - attempting to connect to Firebase emulators');
-  connectToEmulators();
-} else {
-  console.log('🌐 Production mode - using live Firebase services');
-}
 
 // =============================================================================
 // FIREBASE ERROR HANDLING UTILITIES
