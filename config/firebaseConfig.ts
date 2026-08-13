@@ -1,7 +1,7 @@
-import { initializeApp, FirebaseApp, FirebaseOptions } from "firebase/app";
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { FirebaseApp, FirebaseOptions, initializeApp } from "firebase/app";
+import { Auth, getAuth } from 'firebase/auth';
+import { Firestore, getFirestore } from 'firebase/firestore';
+import { FirebaseStorage, getStorage } from 'firebase/storage';
 
 // =============================================================================
 // ENVIRONMENT VARIABLE VALIDATION
@@ -23,7 +23,7 @@ interface RequiredEnvVars {
 const validateEnvironmentVariables = (): RequiredEnvVars => {
   const requiredVars: Array<keyof RequiredEnvVars> = [
     'apiKey',
-    'authDomain', 
+    'authDomain',
     'projectId',
     'storageBucket',
     'messagingSenderId',
@@ -46,7 +46,7 @@ const validateEnvironmentVariables = (): RequiredEnvVars => {
   for (const key of requiredVars) {
     const envVar = envVarMap[key];
     const value = process.env[envVar];
-    
+
     if (!value || value.trim() === '') {
       missingVars.push(envVar);
     } else {
@@ -88,9 +88,9 @@ const validateEnvironmentVariables = (): RequiredEnvVars => {
  */
 const createFirebaseConfig = (): FirebaseOptions => {
   console.log('🔧 Loading Firebase configuration from environment variables...');
-  
+
   const envConfig = validateEnvironmentVariables();
-  
+
   const firebaseConfig: FirebaseOptions = {
     apiKey: envConfig.apiKey,
     authDomain: envConfig.authDomain,
@@ -103,7 +103,7 @@ const createFirebaseConfig = (): FirebaseOptions => {
   console.log('✅ Firebase configuration loaded successfully');
   console.log(`📊 Project ID: ${firebaseConfig.projectId}`);
   console.log(`🔐 Auth Domain: ${firebaseConfig.authDomain}`);
-  
+
   return firebaseConfig;
 };
 
@@ -119,15 +119,15 @@ let storage: FirebaseStorage;
 try {
   // Create and validate configuration
   const firebaseConfig = createFirebaseConfig();
-  
+
   // Initialize Firebase
   app = initializeApp(firebaseConfig);
-  
+
   // Initialize Firebase services - always connecting to real Firebase
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-  
+
   console.log('🔥 Firebase services initialized successfully');
   console.log('🌐 Connected to production Firebase services');
   console.log('   📧 Auth: Firebase Authentication');
@@ -152,11 +152,11 @@ export { auth, db, storage };
  */
 export const handleFirebaseError = (error: any, operation: string = 'Firebase operation') => {
   console.error(`❌ ${operation} failed:`, error);
-  
+
   // Log detailed error information
   if (error.code) console.error('🏷️ Error code:', error.code);
   if (error.message) console.error('📝 Error message:', error.message);
-  
+
   // Return user-friendly error messages based on error codes
   switch (error.code) {
     // Authentication errors
@@ -164,102 +164,102 @@ export const handleFirebaseError = (error: any, operation: string = 'Firebase op
     case 'auth/wrong-password':
     case 'auth/user-not-found':
       return 'Invalid email or password. Please check your credentials.';
-    
+
     case 'auth/email-already-in-use':
       return 'An account with this email already exists. Please sign in instead.';
-    
+
     case 'auth/weak-password':
       return 'Password is too weak. Please choose a stronger password.';
-    
+
     case 'auth/invalid-email':
       return 'Please enter a valid email address.';
-    
+
     case 'auth/too-many-requests':
       return 'Too many failed attempts. Please try again later.';
-    
+
     case 'auth/network-request-failed':
       return 'Network error. Please check your internet connection.';
-    
+
     // Firestore errors
     case 'permission-denied':
       return 'You do not have permission to perform this action.';
-    
+
     case 'not-found':
       return 'The requested data was not found.';
-    
+
     case 'already-exists':
       return 'This data already exists.';
-    
+
     case 'resource-exhausted':
       return 'Service temporarily unavailable. Please try again later.';
-    
+
     case 'failed-precondition':
       return 'Operation failed due to current system state.';
-    
+
     case 'aborted':
       return 'Operation was aborted. Please try again.';
-    
+
     case 'out-of-range':
       return 'Invalid input parameters.';
-    
+
     case 'unimplemented':
       return 'This feature is not yet available.';
-    
+
     case 'internal':
       return 'Internal server error. Please try again later.';
-    
+
     case 'unavailable':
       return 'Service temporarily unavailable. Please try again later.';
-    
+
     case 'data-loss':
       return 'Data corruption detected. Please contact support.';
-    
+
     // Storage errors
     case 'storage/object-not-found':
       return 'File not found.';
-    
+
     case 'storage/bucket-not-found':
       return 'Storage bucket not found.';
-    
+
     case 'storage/project-not-found':
       return 'Project not found.';
-    
+
     case 'storage/quota-exceeded':
       return 'Storage quota exceeded.';
-    
+
     case 'storage/unauthenticated':
       return 'Please sign in to upload files.';
-    
+
     case 'storage/unauthorized':
       return 'You do not have permission to access this file.';
-    
+
     case 'storage/retry-limit-exceeded':
       return 'Upload failed after multiple attempts. Please try again.';
-    
+
     case 'storage/invalid-checksum':
       return 'File upload was corrupted. Please try again.';
-    
+
     case 'storage/canceled':
       return 'Upload was canceled.';
-    
+
     case 'storage/invalid-event-name':
       return 'Invalid upload event.';
-    
+
     case 'storage/invalid-url':
       return 'Invalid file URL.';
-    
+
     case 'storage/invalid-argument':
       return 'Invalid file parameters.';
-    
+
     case 'storage/no-default-bucket':
       return 'No default storage bucket configured.';
-    
+
     case 'storage/cannot-slice-blob':
       return 'File upload error. Please try again.';
-    
+
     case 'storage/server-file-wrong-size':
       return 'File size mismatch. Please try again.';
-    
+
     // Generic errors
     default:
       return `Something went wrong with ${operation.toLowerCase()}. Please try again.`;
@@ -270,9 +270,9 @@ export const handleFirebaseError = (error: any, operation: string = 'Firebase op
  * Check if error is due to permission denied
  */
 export const isPermissionDeniedError = (error: any): boolean => {
-  return error.code === 'permission-denied' || 
-         error.code === 'storage/unauthorized' ||
-         error.code === 'auth/insufficient-permission';
+  return error.code === 'permission-denied' ||
+    error.code === 'storage/unauthorized' ||
+    error.code === 'auth/insufficient-permission';
 };
 
 /**
@@ -280,9 +280,9 @@ export const isPermissionDeniedError = (error: any): boolean => {
  */
 export const isNetworkError = (error: any): boolean => {
   return error.code === 'auth/network-request-failed' ||
-         error.code === 'unavailable' ||
-         error.message?.includes('network') ||
-         error.message?.includes('offline');
+    error.code === 'unavailable' ||
+    error.message?.includes('network') ||
+    error.message?.includes('offline');
 };
 
 /**
@@ -290,8 +290,8 @@ export const isNetworkError = (error: any): boolean => {
  */
 export const requiresAuthentication = (error: any): boolean => {
   return error.code === 'storage/unauthenticated' ||
-         error.code === 'unauthenticated' ||
-         error.code === 'auth/user-not-found';
+    error.code === 'unauthenticated' ||
+    error.code === 'auth/user-not-found';
 };
 
 /**
