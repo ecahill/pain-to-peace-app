@@ -1,6 +1,6 @@
 # Pain to Peace
 
-A mind-body companion app for chronic pain relief. Pain to Peace offers a library of guided audio sessions across three categories: **Sleep**, **Pain**, and **Anxiety** — with favorites, listening progress, and offline support.
+A mind-body companion app for chronic pain relief. Pain to Peace offers a library of guided audio sessions across three categories: **Sleep**, **Pain**, and **Anxiety**, with favorites, listening progress, and offline support.
 
 Built with [Expo](https://expo.dev) and React Native, it runs on iOS, Android, and the web from a single codebase, backed by Firebase for auth, data, and media storage.
 
